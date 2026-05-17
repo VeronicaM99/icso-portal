@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VRP Solver — Clarke & Wright</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg0: #F4F7FB;
+  --bg1: #1E3A6E;
+  --bg2: #25477F;
+  --bg3: #2D5591;
+  --bg4: #152B55;
+  --accent: #2AACA8;
+  --accent2: #1E8A87;
+  --accent3: #3DC4C0;
+  --danger: #DC2626;
+  --text: #F4F7FB;
+  --text2: #8A9CB8;
+  --text3: #5A7AA8;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--bg0);
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  overflow: hidden;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 2px; }
+
+/* Layout */
+#app {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* ─── SIDEBAR ─── */
+#sidebar {
+  width: 320px;
+  min-width: 320px;
+  background: var(--bg1);
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid rgba(255,255,255,0.08);
+  overflow: hidden;
+}
+
+#sidebar-header {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  background: var(--bg1);
+  flex-shrink: 0;
+}
+
+#sidebar-header .app-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+#sidebar-header .instance-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: 3px;
+  min-height: 16px;
+  transition: color 0.2s;
+}
+
+#sidebar-header .instance-name.active { color: var(--text2); }
+
+#sidebar-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Section labels */
+.section-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 6px;
+}
+
+/* ─── DROPZONE ─── */
+#dropzone {
+  border: 1.5px dashed var(--text3);
+  border-radius: 8px;
+  padding: 18px 14px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  background: var(--bg2);
+  position: relative;
+}
+
+#dropzone:hover, #dropzone.dragover {
+  border-color: var(--accent);
+  background: rgba(0,229,200,0.04);
+}
+
+#dropzone .dz-icon {
+  font-size: 22px;
+  margin-bottom: 6px;
+  opacity: 0.6;
+}
+
+#dropzone .dz-text {
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.5;
+}
+
+#dropzone .dz-sub {
+  font-size: 10px;
+  color: var(--text3);
+  margin-top: 4px;
+}
+
+#file-input { display: none; }
+
+/* File badge */
+#file-badge {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0,229,200,0.08);
+  border: 1px solid rgba(0,229,200,0.2);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+#file-badge.visible { display: flex; }
+
+#file-badge .badge-name {
+  flex: 1;
+  color: var(--accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#file-badge .badge-clear {
+  cursor: pointer;
+  color: var(--text3);
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+  transition: color 0.15s;
+}
+
+#file-badge .badge-clear:hover { color: var(--danger); }
+
+/* Textarea */
+#data-textarea {
+  width: 100%;
+  height: 100px;
+  resize: vertical;
+  background: var(--bg3);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 10px;
+  outline: none;
+  transition: border-color 0.2s;
+  line-height: 1.6;
+}
+
+#data-textarea:focus { border-color: rgba(0,229,200,0.3); }
+#data-textarea::placeholder { color: var(--text3); }
+
+/* Example buttons */
+.example-row {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-example {
+  flex: 1;
+  padding: 8px 6px;
+  border: 1px solid rgba(91,141,239,0.25);
+  border-radius: 6px;
+  background: rgba(91,141,239,0.07);
+  color: var(--accent3);
+  font-family: 'Syne', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.btn-example:hover {
+  background: rgba(91,141,239,0.14);
+  border-color: rgba(91,141,239,0.5);
+}
+
+/* Inputs */
+.input-row {
+  display: flex;
+  gap: 10px;
+}
+
+.input-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.input-group label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text3);
+}
+
+.num-input {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--bg3);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+  -moz-appearance: textfield;
+}
+
+.num-input::-webkit-outer-spin-button,
+.num-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+.num-input:focus { border-color: rgba(0,229,200,0.35); }
+
+/* Calculate button */
+#btn-calculate {
+  width: 100%;
+  padding: 12px;
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  color: var(--bg0);
+  font-family: 'Syne', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+#btn-calculate:hover { opacity: 0.88; }
+#btn-calculate:active { transform: scale(0.98); }
+#btn-calculate:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Error banner */
+#error-banner {
+  display: none;
+  background: rgba(255,77,109,0.12);
+  border: 1px solid rgba(255,77,109,0.35);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 11px;
+  color: var(--danger);
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1.5;
+}
+
+#error-banner.visible { display: block; }
+
+/* Metrics */
+#metrics-panel {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#metrics-panel.visible { display: flex; }
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.metric-card {
+  background: var(--bg2);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 8px;
+  padding: 12px 10px;
+}
+
+.metric-card .mc-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 5px;
+}
+
+.metric-card .mc-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.mc-value.cyan { color: var(--accent); }
+.mc-value.amber { color: var(--accent2); }
+.mc-value.blue { color: var(--accent3); }
+.mc-value.white { color: var(--text); }
+
+/* Routes list */
+#routes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.route-card {
+  background: var(--bg2);
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: default;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.route-card:hover {
+  border-color: rgba(255,255,255,0.12);
+  background: var(--bg3);
+}
+
+.route-card.dimmed { opacity: 0.3; }
+.route-card.highlighted { border-color: var(--accent); opacity: 1; }
+
+.rc-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.rc-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.rc-name {
+  font-size: 11px;
+  font-weight: 600;
+  flex: 1;
+  color: var(--text);
+}
+
+.rc-cost {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text2);
+}
+
+.rc-bar-wrap {
+  height: 3px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 2px;
+  margin-bottom: 7px;
+  overflow: hidden;
+}
+
+.rc-bar {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+.rc-seq {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text3);
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+/* ─── MAIN PANEL ─── */
+#main-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--bg0);
+  position: relative;
+}
+
+/* Canvas toolbar */
+#canvas-toolbar {
+  height: 48px;
+  background: var(--bg1);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  flex-shrink: 0;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(255,255,255,0.08);
+  margin: 0 4px;
+}
+
+.toolbar-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-right: auto;
+}
+
+.btn-tool {
+  padding: 6px 12px;
+  border-radius: 5px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+  color: var(--text2);
+  font-family: 'Syne', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.btn-tool:hover { background: rgba(255,255,255,0.07); color: var(--text); }
+
+.btn-tool.active {
+  background: rgba(0,229,200,0.1);
+  border-color: rgba(0,229,200,0.3);
+  color: var(--accent);
+}
+
+/* Canvas wrapper */
+#canvas-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+#main-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+
+#main-canvas:active { cursor: grabbing; }
+
+/* Empty state */
+#empty-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  gap: 12px;
+}
+
+#empty-state .es-icon {
+  font-size: 48px;
+  opacity: 0.12;
+}
+
+#empty-state .es-text {
+  font-size: 13px;
+  color: var(--text3);
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* Loading overlay */
+#loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(8,13,26,0.88);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 16px;
+  z-index: 10;
+}
+
+#loading-overlay.visible { display: flex; }
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 2.5px solid rgba(0,229,200,0.15);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loading-text {
+  font-size: 12px;
+  color: var(--text3);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.08em;
+}
+
+/* Tooltip */
+#tooltip {
+  position: absolute;
+  background: var(--bg2);
+  border: 1px solid rgba(0,229,200,0.25);
+  border-radius: 8px;
+  padding: 10px 13px;
+  pointer-events: none;
+  display: none;
+  z-index: 20;
+  min-width: 140px;
+}
+
+#tooltip.visible { display: block; }
+
+.tt-id {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+
+.tt-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 11px;
+  color: var(--text2);
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 2px;
+}
+
+.tt-row span:last-child { color: var(--text); }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ─── SIDEBAR ─── -->
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <div class="app-title">VRP Solver</div>
+      <div class="instance-name" id="instance-name">Clarke &amp; Wright Savings</div>
+    </div>
+
+    <div id="sidebar-scroll">
+
+      <!-- Dropzone -->
+      <div>
+        <div class="section-label">Datos de entrada</div>
+        <div id="dropzone" onclick="document.getElementById('file-input').click()">
+          <div class="dz-icon">📂</div>
+          <div class="dz-text">Arrastra un fichero .txt<br>o haz clic para seleccionar</div>
+          <div class="dz-sub">Formato: x &nbsp; y &nbsp; demanda (por línea)</div>
+        </div>
+        <input type="file" id="file-input" accept=".txt,.csv">
+        <div id="file-badge" style="margin-top:8px">
+          <span class="badge-name" id="badge-name"></span>
+          <span class="badge-clear" onclick="clearFile()" title="Limpiar">×</span>
+        </div>
+      </div>
+
+      <!-- Textarea -->
+      <div>
+        <div class="section-label">O pega los datos aquí</div>
+        <textarea id="data-textarea" placeholder="0	0	0&#10;10	5	12&#10;20	15	8&#10;..."></textarea>
+      </div>
+
+      <!-- Examples -->
+      <div>
+        <div class="section-label">Ejemplos precargados</div>
+        <div class="example-row">
+          <button class="btn-example" onclick="loadExample('small')">Pequeño (8)</button>
+          <button class="btn-example" onclick="loadExample('medium')">Mediano (15)</button>
+          <button class="btn-example" onclick="loadExample('large')">Grande (25)</button>
+        </div>
+      </div>
+
+      <!-- Params -->
+      <div>
+        <div class="section-label">Parámetros</div>
+        <div class="input-row">
+          <div class="input-group">
+            <label>Capacidad vehículo</label>
+            <input type="number" class="num-input" id="inp-capacity" value="100" min="1">
+          </div>
+          <div class="input-group">
+            <label>Máx. vehículos</label>
+            <input type="number" class="num-input" id="inp-vehicles" value="10" min="1">
+          </div>
+        </div>
+      </div>
+
+      <!-- Error -->
+      <div id="error-banner"></div>
+
+      <!-- Calculate button -->
+      <button id="btn-calculate" onclick="runSolver()">Calcular Rutas</button>
+
+      <!-- Metrics -->
+      <div id="metrics-panel">
+        <div class="section-label">Métricas</div>
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="mc-label">Coste total</div>
+            <div class="mc-value cyan" id="mc-cost">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="mc-label">Rutas</div>
+            <div class="mc-value amber" id="mc-routes">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="mc-label">Nodos</div>
+            <div class="mc-value blue" id="mc-nodes">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="mc-label">Ocup. media</div>
+            <div class="mc-value white" id="mc-occ">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Routes list -->
+      <div id="routes-section" style="display:none">
+        <div class="section-label">Rutas</div>
+        <div id="routes-list"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ─── MAIN PANEL ─── -->
+  <div id="main-panel">
+    <div id="canvas-toolbar">
+      <span class="toolbar-title">Visualización</span>
+      <button class="btn-tool active" id="btn-labels" onclick="toggleLabels()">Etiquetas</button>
+      <button class="btn-tool active" id="btn-depot" onclick="toggleDepot()">Depósito</button>
+      <div class="toolbar-divider"></div>
+      <button class="btn-tool" onclick="fitView()">Ajustar vista</button>
+    </div>
+
+    <div id="canvas-wrap">
+      <canvas id="main-canvas"></canvas>
+
+      <div id="empty-state">
+        <div class="es-icon">🗺️</div>
+        <div class="es-text">Carga los datos y pulsa<br><strong>Calcular Rutas</strong></div>
+      </div>
+
+      <div id="loading-overlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Calculando rutas…</div>
+      </div>
+
+      <div id="tooltip">
+        <div class="tt-id" id="tt-id">Nodo 0</div>
+        <div class="tt-row"><span>Demanda</span><span id="tt-demand">—</span></div>
+        <div class="tt-row"><span>X, Y</span><span id="tt-xy">—</span></div>
+        <div class="tt-row"><span>Vehículo</span><span id="tt-vehicle">—</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+//  EXAMPLE DATA
+// ─────────────────────────────────────────────
+const EXAMPLES = {
+  small: {
+    name: 'ejemplo_pequeño',
+    capacity: 100,
+    vehicles: 4,
+    data: `0\t0\t0
+10\t5\t20
+15\t20\t15
+25\t8\t30
+30\t25\t18
+5\t30\t22
+20\t35\t12
+35\t15\t25
+8\t18\t14`
+  },
+  medium: {
+    name: 'ejemplo_mediano',
+    capacity: 120,
+    vehicles: 6,
+    data: `0\t0\t0
+10\t5\t18
+20\t10\t22
+30\t5\t15
+40\t15\t20
+35\t30\t14
+25\t40\t19
+15\t35\t11
+5\t25\t17
+10\t45\t23
+20\t50\t16
+40\t45\t13
+50\t30\t21
+45\t10\t18
+55\t20\t9
+28\t22\t24`
+  },
+  large: {
+    name: 'ejemplo_grande',
+    capacity: 150,
+    vehicles: 8,
+    data: `0\t0\t0
+8\t6\t14
+16\t4\t20
+26\t8\t11
+34\t2\t17
+42\t10\t23
+38\t22\t16
+30\t30\t19
+20\t28\t13
+12\t34\t22
+4\t28\t18
+6\t16\t15
+14\t42\t21
+24\t46\t10
+36\t44\t16
+46\t36\t24
+52\t24\t12
+50\t12\t19
+44\t2\t17
+32\t16\t20
+22\t18\t14
+18\t8\t22
+40\t32\t11
+28\t40\t18
+10\t22\t16`
+  }
+};
+
+// ─────────────────────────────────────────────
+//  ROUTE COLORS
+// ─────────────────────────────────────────────
+const ROUTE_COLORS = [
+  '#00E5C8','#F5A623','#5B8DEF','#FF6B6B','#C77DFF',
+  '#2ECC71','#FFD93D','#4ECDC4','#FF8B94','#A8E6CF',
+  '#FFC3A0','#D4A5A5','#9DE0AD','#45ADA8','#547980',
+  '#594F4F','#E84393','#00B4D8','#F77F00','#B5E48C'
+];
+
+// ─────────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────────
+let state = {
+  nodes: [],
+  routes: [],
+  solved: false,
+  showLabels: true,
+  showDepot: true,
+  hoveredRoute: -1,
+  transform: { scale: 1, offsetX: 0, offsetY: 0 },
+  dragging: false,
+  dragStart: { x: 0, y: 0 },
+  dragOrigin: { x: 0, y: 0 }
+};
+
+// ─────────────────────────────────────────────
+//  CANVAS SETUP
+// ─────────────────────────────────────────────
+const canvas = document.getElementById('main-canvas');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+  const wrap = document.getElementById('canvas-wrap');
+  canvas.width = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+  render();
+}
+
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// ─────────────────────────────────────────────
+//  DRAG & DROP FILE
+// ─────────────────────────────────────────────
+const dropzone = document.getElementById('dropzone');
+
+dropzone.addEventListener('dragover', e => {
+  e.preventDefault();
+  dropzone.classList.add('dragover');
+});
+
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) loadFile(file);
+});
+
+document.getElementById('file-input').addEventListener('change', e => {
+  if (e.target.files[0]) loadFile(e.target.files[0]);
+});
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('data-textarea').value = ev.target.result.trim();
+    // Extract instance name
+    let name = file.name.replace(/_input_nodes\.txt$/i, '').replace(/\.[^.]+$/, '');
+    setInstanceName(name);
+    // Auto-detect vehicle count from filename (kN pattern)
+    const kMatch = file.name.match(/k(\d+)/i);
+    if (kMatch) document.getElementById('inp-vehicles').value = kMatch[1];
+    // Show badge
+    document.getElementById('badge-name').textContent = file.name;
+    document.getElementById('file-badge').classList.add('visible');
+    hideError();
+  };
+  reader.readAsText(file);
+}
+
+function clearFile() {
+  document.getElementById('data-textarea').value = '';
+  document.getElementById('file-badge').classList.remove('visible');
+  document.getElementById('file-input').value = '';
+  setInstanceName('');
+}
+
+function setInstanceName(name) {
+  const el = document.getElementById('instance-name');
+  if (name) {
+    el.textContent = name;
+    el.classList.add('active');
+    document.getElementById('instance-name').textContent = name;
+  } else {
+    el.textContent = 'Clarke & Wright Savings';
+    el.classList.remove('active');
+  }
+}
+
+// ─────────────────────────────────────────────
+//  EXAMPLES
+// ─────────────────────────────────────────────
+function loadExample(size) {
+  const ex = EXAMPLES[size];
+  document.getElementById('data-textarea').value = ex.data;
+  document.getElementById('inp-capacity').value = ex.capacity;
+  document.getElementById('inp-vehicles').value = ex.vehicles;
+  document.getElementById('file-badge').classList.remove('visible');
+  setInstanceName(ex.name);
+  hideError();
+}
+
+// ─────────────────────────────────────────────
+//  PARSER
+// ─────────────────────────────────────────────
+function parseNodes(text) {
+  const lines = text.trim().split('\n');
+  const nodes = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line || line.startsWith('#')) continue;
+    const parts = line.split(/[\t ,;]+/);
+    if (parts.length < 2) throw new Error(`Línea ${i+1}: formato incorrecto ("${line}")`);
+    const x = parseFloat(parts[0]);
+    const y = parseFloat(parts[1]);
+    const demand = parts.length >= 3 ? parseFloat(parts[2]) : 0;
+    if (isNaN(x) || isNaN(y)) throw new Error(`Línea ${i+1}: coordenadas inválidas ("${line}")`);
+    if (isNaN(demand)) throw new Error(`Línea ${i+1}: demanda inválida ("${line}")`);
+    nodes.push({ id: nodes.length, x, y, demand });
+  }
+  if (nodes.length < 2) throw new Error('Se necesitan al menos 2 nodos (depósito + 1 cliente).');
+  return nodes;
+}
+
+// ─────────────────────────────────────────────
+//  ALGORITHM — Clarke & Wright
+// ─────────────────────────────────────────────
+function euclidean(a, b) {
+  const dx = a.x - b.x, dy = a.y - b.y;
+  return Math.sqrt(dx*dx + dy*dy);
+}
+
+function routeCost(route, nodes) {
+  let cost = 0;
+  for (let i = 0; i < route.length - 1; i++) {
+    cost += euclidean(nodes[route[i]], nodes[route[i+1]]);
+  }
+  return cost;
+}
+
+function clarkeWright(nodes, capacity, maxVehicles) {
+  const depot = nodes[0];
+  const clients = nodes.slice(1);
+  const n = nodes.length;
+
+  // Distance matrix
+  const dist = Array.from({length: n}, () => new Array(n).fill(0));
+  for (let i = 0; i < n; i++)
+    for (let j = i+1; j < n; j++) {
+      dist[i][j] = dist[j][i] = euclidean(nodes[i], nodes[j]);
+    }
+
+  // Compute savings for all pairs (i, j) of clients (i,j >= 1)
+  const savings = [];
+  for (let i = 1; i < n; i++) {
+    for (let j = i+1; j < n; j++) {
+      const s = dist[0][i] + dist[0][j] - dist[i][j];
+      savings.push({ i, j, s });
+    }
+  }
+  savings.sort((a, b) => b.s - a.s);
+
+  // Dummy solution: one route per client [depot, client, depot]
+  // Track for each node: which route it belongs to, interior status
+  const routes = clients.map(c => ({
+    nodes: [0, c.id, 0],
+    demand: c.demand,
+    cost: 2 * dist[0][c.id]
+  }));
+
+  // nodeRoute[id] = route index
+  const nodeRoute = new Array(n).fill(-1);
+  clients.forEach((c, idx) => { nodeRoute[c.id] = idx; });
+
+  // interior[id] = true if node is not an endpoint
+  const interior = new Array(n).fill(false);
+
+  // Merge loop
+  for (const { i, j } of savings) {
+    const ri = nodeRoute[i];
+    const rj = nodeRoute[j];
+
+    if (ri === -1 || rj === -1) continue;
+    if (ri === rj) continue;
+    if (interior[i] || interior[j]) continue;
+
+    const routeI = routes[ri];
+    const routeJ = routes[rj];
+
+    if (routeI.demand + routeJ.demand > capacity) continue;
+
+    // Check vehicle limit: merging reduces route count by 1
+    const activeCount = routes.filter(r => r !== null).length;
+    // We'll enforce after merge; just track
+
+    // Orient iRoute so i is the last client node (just before final depot)
+    // Route structure: [0, ..., i, 0] or [0, i, ..., 0]
+    // We want i at position length-2 (just before depot)
+    let nodesI = routeI.nodes.slice(1, -1); // strip depot ends
+    if (nodesI[0] === i) nodesI = nodesI.reverse();
+    // now nodesI ends with i
+
+    // Orient jRoute so j is the first client node (just after depot)
+    let nodesJ = routeJ.nodes.slice(1, -1);
+    if (nodesJ[nodesJ.length - 1] === j) nodesJ = nodesJ.reverse();
+    // now nodesJ starts with j
+
+    // Merge: [0, ...nodesI, ...nodesJ, 0]
+    const merged = [0, ...nodesI, ...nodesJ, 0];
+    const mergedDemand = routeI.demand + routeJ.demand;
+    const mergedCost = routeCost(merged, nodes);
+
+    // Update route ri
+    routes[ri] = { nodes: merged, demand: mergedDemand, cost: mergedCost };
+
+    // Nullify route rj
+    routes[rj] = null;
+
+    // Update nodeRoute and interior for all nodes in merged route
+    const innerNodes = merged.slice(1, -1);
+    innerNodes.forEach(nid => { nodeRoute[nid] = ri; });
+
+    // Mark interior nodes (all except first and last client)
+    for (let k = 1; k < innerNodes.length - 1; k++) {
+      interior[innerNodes[k]] = true;
+    }
+    // Endpoints are not interior
+    interior[innerNodes[0]] = false;
+    interior[innerNodes[innerNodes.length-1]] = false;
+  }
+
+  // Collect valid routes
+  let finalRoutes = routes
+    .filter(r => r !== null)
+    .map((r, idx) => ({
+      ...r,
+      id: idx,
+      color: ROUTE_COLORS[idx % ROUTE_COLORS.length]
+    }));
+
+  // Enforce vehicle limit
+  if (finalRoutes.length > maxVehicles) {
+    // Sort by cost desc, mark excess as warnings but still return them
+    // (can't merge without violating capacity; just flag)
+    finalRoutes = finalRoutes.slice(0, maxVehicles);
+  }
+
+  // Re-assign sequential IDs and colors
+  finalRoutes = finalRoutes.map((r, idx) => ({
+    ...r,
+    id: idx,
+    color: ROUTE_COLORS[idx % ROUTE_COLORS.length],
+    name: `Vehículo ${idx + 1}`
+  }));
+
+  const totalCost = finalRoutes.reduce((s, r) => s + r.cost, 0);
+  return { routes: finalRoutes, totalCost };
+}
+
+// ─────────────────────────────────────────────
+//  SOLVER ENTRY POINT
+// ─────────────────────────────────────────────
+function showError(msg) {
+  const el = document.getElementById('error-banner');
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+
+function hideError() {
+  document.getElementById('error-banner').classList.remove('visible');
+}
+
+function runSolver() {
+  hideError();
+  const text = document.getElementById('data-textarea').value.trim();
+  if (!text) { showError('No hay datos. Carga un fichero o pega los nodos.'); return; }
+
+  const capacity = parseFloat(document.getElementById('inp-capacity').value);
+  const maxV = parseInt(document.getElementById('inp-vehicles').value);
+  if (!capacity || capacity <= 0) { showError('Capacidad de vehículo inválida.'); return; }
+  if (!maxV || maxV <= 0) { showError('Número de vehículos inválido.'); return; }
+
+  // Show loading
+  document.getElementById('loading-overlay').classList.add('visible');
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('btn-calculate').disabled = true;
+
+  setTimeout(() => {
+    try {
+      const nodes = parseNodes(text);
+      const result = clarkeWright(nodes, capacity, maxV);
+
+      state.nodes = nodes;
+      state.routes = result.routes;
+      state.solved = true;
+
+      updateMetrics(result, nodes, capacity);
+      renderRouteList(result.routes, capacity);
+      fitView();
+      render();
+
+    } catch(e) {
+      showError('Error: ' + e.message);
+      document.getElementById('empty-state').style.display = 'flex';
+    } finally {
+      document.getElementById('loading-overlay').classList.remove('visible');
+      document.getElementById('btn-calculate').disabled = false;
+    }
+  }, 50);
+}
+
+// ─────────────────────────────────────────────
+//  METRICS
+// ─────────────────────────────────────────────
+function updateMetrics(result, nodes, capacity) {
+  document.getElementById('mc-cost').textContent = result.totalCost.toFixed(1);
+  document.getElementById('mc-routes').textContent = result.routes.length;
+  document.getElementById('mc-nodes').textContent = nodes.length - 1;
+
+  const avgOcc = result.routes.length > 0
+    ? result.routes.reduce((s, r) => s + r.demand / capacity, 0) / result.routes.length * 100
+    : 0;
+  document.getElementById('mc-occ').textContent = avgOcc.toFixed(0) + '%';
+
+  document.getElementById('metrics-panel').classList.add('visible');
+}
+
+// ─────────────────────────────────────────────
+//  ROUTE LIST
+// ─────────────────────────────────────────────
+function renderRouteList(routes, capacity) {
+  const list = document.getElementById('routes-list');
+  list.innerHTML = '';
+
+  routes.forEach((r, idx) => {
+    const pct = Math.round(r.demand / capacity * 100);
+    const seq = r.nodes.map(n => n === 0 ? 'D' : n).join(' → ');
+
+    const card = document.createElement('div');
+    card.className = 'route-card';
+    card.dataset.routeId = idx;
+    card.innerHTML = `
+      <div class="rc-header">
+        <div class="rc-dot" style="background:${r.color}"></div>
+        <span class="rc-name">${r.name}</span>
+        <span class="rc-cost">${r.cost.toFixed(1)}</span>
+      </div>
+      <div class="rc-bar-wrap">
+        <div class="rc-bar" style="width:${pct}%;background:${r.color}"></div>
+      </div>
+      <div class="rc-seq">${seq} &nbsp;<span style="color:var(--text3)">(${pct}%)</span></div>
+    `;
+    card.addEventListener('mouseenter', () => highlightRoute(idx));
+    card.addEventListener('mouseleave', () => highlightRoute(-1));
+    list.appendChild(card);
+  });
+
+  document.getElementById('routes-section').style.display = 'block';
+}
+
+function highlightRoute(routeId) {
+  state.hoveredRoute = routeId;
+  // Update card states
+  document.querySelectorAll('.route-card').forEach(card => {
+    const id = parseInt(card.dataset.routeId);
+    card.classList.remove('dimmed', 'highlighted');
+    if (routeId >= 0) {
+      if (id === routeId) card.classList.add('highlighted');
+      else card.classList.add('dimmed');
+    }
+  });
+  render();
+}
+
+// ─────────────────────────────────────────────
+//  FIT VIEW
+// ─────────────────────────────────────────────
+function fitView() {
+  if (!state.nodes.length) return;
+  const PADDING = 60;
+  const xs = state.nodes.map(n => n.x);
+  const ys = state.nodes.map(n => n.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const W = canvas.width - PADDING * 2;
+  const H = canvas.height - PADDING * 2;
+  const rangeX = maxX - minX || 1;
+  const rangeY = maxY - minY || 1;
+  const scale = Math.min(W / rangeX, H / rangeY);
+  const offsetX = PADDING + (W - rangeX * scale) / 2 - minX * scale;
+  const offsetY = PADDING + (H - rangeY * scale) / 2 - minY * scale;
+  state.transform = { scale, offsetX, offsetY };
+  render();
+}
+
+// ─────────────────────────────────────────────
+//  RENDER
+// ─────────────────────────────────────────────
+function worldToScreen(x, y) {
+  const { scale, offsetX, offsetY } = state.transform;
+  return { sx: x * scale + offsetX, sy: y * scale + offsetY };
+}
+
+function render() {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // Background grid
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.02)';
+  ctx.lineWidth = 1;
+  const gridSize = 40;
+  for (let x = 0; x < W; x += gridSize) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y < H; y += gridSize) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+  ctx.restore();
+
+  if (!state.solved || !state.nodes.length) return;
+
+  const { routes, nodes, hoveredRoute, showLabels, showDepot } = state;
+
+  // Draw routes
+  routes.forEach((route, idx) => {
+    const isHovered = hoveredRoute === idx;
+    const isDimmed = hoveredRoute >= 0 && !isHovered;
+    ctx.save();
+    ctx.globalAlpha = isDimmed ? 0.15 : 1;
+    ctx.strokeStyle = route.color;
+    ctx.lineWidth = isHovered ? 2.5 : 1.5;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    route.nodes.forEach((nid, i) => {
+      const { sx, sy } = worldToScreen(nodes[nid].x, nodes[nid].y);
+      if (i === 0) ctx.moveTo(sx, sy);
+      else ctx.lineTo(sx, sy);
+    });
+    ctx.stroke();
+    ctx.restore();
+  });
+
+  // Draw client nodes
+  nodes.slice(1).forEach(node => {
+    const route = routes.find(r => r.nodes.includes(node.id));
+    if (!route) return;
+    const isHovered = hoveredRoute === route.id;
+    const isDimmed = hoveredRoute >= 0 && !isHovered;
+    const { sx, sy } = worldToScreen(node.x, node.y);
+    ctx.save();
+    ctx.globalAlpha = isDimmed ? 0.15 : 1;
+    ctx.fillStyle = route.color;
+    ctx.beginPath();
+    ctx.arc(sx, sy, isHovered ? 7 : 5.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(8,13,26,0.8)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
+
+    if (showLabels) {
+      ctx.save();
+      ctx.globalAlpha = isDimmed ? 0.15 : 0.9;
+      ctx.fillStyle = '#E8F4FF';
+      ctx.font = '500 10px JetBrains Mono, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(node.id, sx, sy - 10);
+      ctx.restore();
+    }
+  });
+
+  // Draw depot
+  if (showDepot && nodes[0]) {
+    const { sx, sy } = worldToScreen(nodes[0].x, nodes[0].y);
+    const size = 9;
+    ctx.save();
+    ctx.globalAlpha = hoveredRoute >= 0 ? 0.5 : 1;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy - size);
+    ctx.lineTo(sx + size, sy + size);
+    ctx.lineTo(sx - size, sy + size);
+    ctx.closePath();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fill();
+    ctx.strokeStyle = '#00E5C8';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    if (showLabels) {
+      ctx.fillStyle = '#E8F4FF';
+      ctx.font = 'bold 10px JetBrains Mono, monospace';
+      ctx.textAlign = 'center';
+      ctx.globalAlpha = 0.9;
+      ctx.fillText('D', sx, sy - 15);
+    }
+    ctx.restore();
+  }
+}
+
+// ─────────────────────────────────────────────
+//  TOOLBAR TOGGLES
+// ─────────────────────────────────────────────
+function toggleLabels() {
+  state.showLabels = !state.showLabels;
+  document.getElementById('btn-labels').classList.toggle('active', state.showLabels);
+  render();
+}
+
+function toggleDepot() {
+  state.showDepot = !state.showDepot;
+  document.getElementById('btn-depot').classList.toggle('active', state.showDepot);
+  render();
+}
+
+// ─────────────────────────────────────────────
+//  ZOOM & PAN
+// ─────────────────────────────────────────────
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const factor = e.deltaY < 0 ? 1.12 : 0.89;
+  const { scale, offsetX, offsetY } = state.transform;
+  state.transform = {
+    scale: scale * factor,
+    offsetX: mx - (mx - offsetX) * factor,
+    offsetY: my - (my - offsetY) * factor
+  };
+  render();
+}, { passive: false });
+
+canvas.addEventListener('mousedown', e => {
+  state.dragging = true;
+  state.dragStart = { x: e.clientX, y: e.clientY };
+  state.dragOrigin = { x: state.transform.offsetX, y: state.transform.offsetY };
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (state.dragging) {
+    state.transform.offsetX = state.dragOrigin.x + (e.clientX - state.dragStart.x);
+    state.transform.offsetY = state.dragOrigin.y + (e.clientY - state.dragStart.y);
+    render();
+    return;
+  }
+
+  // Hover tooltip
+  if (!state.solved) return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const { scale, offsetX, offsetY } = state.transform;
+  const wx = (mx - offsetX) / scale;
+  const wy = (my - offsetY) / scale;
+
+  let found = null;
+  let minDist = Infinity;
+  state.nodes.forEach(node => {
+    const d = Math.sqrt((node.x - wx)**2 + (node.y - wy)**2);
+    const screenDist = d * scale;
+    if (screenDist < 12 && screenDist < minDist) {
+      minDist = screenDist;
+      found = node;
+    }
+  });
+
+  const tooltip = document.getElementById('tooltip');
+  if (found) {
+    const route = state.routes.find(r => r.nodes.includes(found.id));
+    document.getElementById('tt-id').textContent = found.id === 0 ? 'Depósito (0)' : `Nodo ${found.id}`;
+    document.getElementById('tt-demand').textContent = found.demand;
+    document.getElementById('tt-xy').textContent = `${found.x}, ${found.y}`;
+    document.getElementById('tt-vehicle').textContent = route ? route.name : '—';
+    let tx = e.clientX - rect.left + 14;
+    let ty = e.clientY - rect.top + 14;
+    const ttW = 160, ttH = 100;
+    if (tx + ttW > canvas.width) tx = e.clientX - rect.left - ttW - 10;
+    if (ty + ttH > canvas.height) ty = e.clientY - rect.top - ttH - 10;
+    tooltip.style.left = tx + 'px';
+    tooltip.style.top = ty + 'px';
+    tooltip.classList.add('visible');
+  } else {
+    tooltip.classList.remove('visible');
+  }
+});
+
+canvas.addEventListener('mouseup', () => { state.dragging = false; });
+canvas.addEventListener('mouseleave', () => {
+  state.dragging = false;
+  document.getElementById('tooltip').classList.remove('visible');
+});
+
+</script>
+</body>
+</html>

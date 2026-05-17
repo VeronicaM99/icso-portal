@@ -1,0 +1,1158 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PFSP Solver — NEH + Taillard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg0: #F4F7FB;
+  --bg1: #1E3A6E;
+  --bg2: #25477F;
+  --bg3: #2D5591;
+  --bg4: #152B55;
+  --accent:  #2AACA8;
+  --accent2: #3DC4C0;
+  --accent3: #1E8A87;
+  --text:  #F4F7FB;
+  --text2: #8A9CB8;
+  --text3: #5A7AA8;
+  --border:  rgba(255,255,255,0.08);
+  --border2: rgba(42,172,168,0.35);
+  --danger: #DC2626;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--bg0);
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  overflow: hidden;
+}
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 2px; }
+
+#app {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* ─── SIDEBAR ─── */
+#sidebar {
+  width: 300px;
+  min-width: 300px;
+  background: var(--bg1);
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+
+#sidebar-header {
+  padding: 16px 18px 13px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1E3A6E, #25477F);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.logo-icon svg { width: 18px; height: 18px; }
+
+.header-text { flex: 1; min-width: 0; }
+
+.app-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.instance-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text3);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.instance-badge.active { color: var(--accent); }
+
+#sidebar-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.section-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 6px;
+}
+
+/* ─── DROPZONE ─── */
+#dropzone {
+  border: 1.5px dashed var(--border2);
+  border-radius: 8px;
+  padding: 16px 12px;
+  text-align: center;
+  cursor: pointer;
+  background: rgba(109,40,217,0.03);
+  transition: background 0.2s, border-color 0.2s;
+}
+
+#dropzone:hover, #dropzone.dragover {
+  background: rgba(109,40,217,0.07);
+  border-color: var(--accent);
+}
+
+.dz-icon { font-size: 20px; margin-bottom: 5px; opacity: 0.55; }
+.dz-text { font-size: 11.5px; color: var(--text2); line-height: 1.5; }
+.dz-sub  { font-size: 10px; color: var(--text3); margin-top: 3px; }
+
+#file-input { display: none; }
+
+#file-badge {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  background: rgba(4,120,87,0.1);
+  border: 1px solid rgba(4,120,87,0.3);
+  border-radius: 6px;
+  padding: 7px 10px;
+  margin-top: 7px;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+#file-badge.visible { display: flex; }
+.badge-name { flex:1; color: var(--accent3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.badge-clear { cursor:pointer; color:var(--text3); font-size:15px; line-height:1; transition:color .15s; }
+.badge-clear:hover { color: var(--danger); }
+
+/* ─── EXAMPLE BUTTONS ─── */
+.example-row { display:flex; gap:7px; }
+
+.btn-example {
+  flex:1;
+  padding: 7px 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg2);
+  color: var(--text2);
+  font-family: 'Syne', sans-serif;
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+}
+
+.btn-example:hover {
+  background: var(--bg3);
+  border-color: var(--border2);
+  color: var(--accent);
+}
+
+/* ─── PARAM DISPLAY ─── */
+.param-row { display:flex; gap:8px; }
+
+.param-group {
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+.param-group label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text3);
+}
+
+.param-val {
+  padding: 8px 10px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  opacity: 0.45;
+  transition: opacity .3s;
+  text-align: center;
+}
+
+.param-val.loaded { opacity: 1; }
+
+/* ─── CTA BUTTON ─── */
+#btn-calculate {
+  width: 100%;
+  padding: 11px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-family: 'Syne', sans-serif;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity .15s, transform .1s;
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+#btn-calculate.ready { opacity: 1; pointer-events: auto; }
+#btn-calculate.ready:hover { opacity: 0.88; }
+#btn-calculate.ready:active { transform: scale(0.98); }
+
+/* ─── ERROR BANNER ─── */
+#error-banner {
+  display: none;
+  background: rgba(220,38,38,0.1);
+  border: 1px solid rgba(220,38,38,0.3);
+  border-radius: 6px;
+  padding: 9px 11px;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--danger);
+  line-height: 1.5;
+}
+
+#error-banner.visible { display: block; }
+
+/* ─── METRICS ─── */
+#metrics-panel { display:none; flex-direction:column; gap:9px; }
+#metrics-panel.visible { display:flex; }
+
+.metrics-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+
+.metric-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.mc-label { font-size:9px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--text3); margin-bottom:4px; }
+.mc-value { font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:600; line-height:1; }
+.mc-value.violet { color: var(--accent); }
+.mc-value.rose   { color: var(--accent2); }
+.mc-value.green  { color: var(--accent3); }
+.mc-value.dark   { color: var(--text); }
+
+/* ─── PERMUTATION ─── */
+#perm-panel { display:none; flex-direction:column; gap:7px; }
+#perm-panel.visible { display:flex; }
+
+#perm-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.perm-tag {
+  padding: 4px 9px;
+  border-radius: 5px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+}
+
+/* ─── MAIN PANEL ─── */
+#main-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--bg0);
+  position: relative;
+}
+
+#canvas-toolbar {
+  height: 46px;
+  background: var(--bg1);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  flex-shrink: 0;
+}
+
+.toolbar-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-right: auto;
+}
+
+.toolbar-divider { width:1px; height:20px; background:var(--border); margin:0 2px; }
+
+.btn-tool {
+  padding: 5px 11px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  color: var(--text2);
+  font-family: 'Syne', sans-serif;
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+  white-space: nowrap;
+}
+
+.btn-tool:hover { background: var(--bg3); color: var(--accent); }
+.btn-tool.active { background: rgba(109,40,217,0.1); border-color: var(--border2); color: var(--accent); }
+
+#canvas-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+#gantt-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+
+#gantt-canvas:active { cursor: grabbing; }
+
+/* ─── EMPTY STATE ─── */
+#empty-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  gap: 12px;
+}
+
+.es-svg { opacity: 0.18; }
+.es-text { font-size: 12.5px; color: var(--text3); text-align: center; line-height: 1.6; }
+
+/* ─── LOADING OVERLAY ─── */
+#loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(244,247,251,0.88);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 14px;
+  z-index: 10;
+}
+
+#loading-overlay.visible { display: flex; }
+
+.spinner {
+  width: 34px; height: 34px;
+  border: 2.5px solid var(--border2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 11.5px; color: var(--text2); font-family: 'JetBrains Mono',monospace; }
+
+/* ─── TOOLTIP ─── */
+#tooltip {
+  position: absolute;
+  background: var(--text);
+  border-radius: 8px;
+  padding: 10px 13px;
+  pointer-events: none;
+  display: none;
+  z-index: 20;
+  min-width: 150px;
+  box-shadow: 0 4px 20px rgba(100,60,180,0.2);
+}
+
+#tooltip.visible { display: block; }
+.tt-title { font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:600; color:#fff; margin-bottom:7px; }
+.tt-row { display:flex; justify-content:space-between; gap:14px; font-size:10.5px; font-family:'JetBrains Mono',monospace; margin-bottom:2px; }
+.tt-row .tt-k { color:rgba(255,255,255,0.5); }
+.tt-row .tt-v { color:#fff; }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <div class="header-text">
+        <div class="app-title">PFSP Solver</div>
+        <div class="instance-badge" id="instance-badge">NEH + Taillard Accelerations</div>
+      </div>
+    </div>
+
+    <div id="sidebar-scroll">
+
+      <div>
+        <div class="section-label">Instancia</div>
+        <div id="dropzone" onclick="document.getElementById('file-input').click()">
+          <div class="dz-icon">📄</div>
+          <div class="dz-text">Arrastra un fichero _inputs.txt<br>o haz clic para seleccionar</div>
+          <div class="dz-sub">Formato Taillard</div>
+        </div>
+        <input type="file" id="file-input" accept=".txt,.dat">
+        <div id="file-badge">
+          <span class="badge-name" id="badge-name"></span>
+          <span class="badge-clear" onclick="clearFile()" title="Limpiar">×</span>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-label">Ejemplos precargados</div>
+        <div class="example-row">
+          <button class="btn-example" onclick="loadExample('s')">4j × 3m</button>
+          <button class="btn-example" onclick="loadExample('m')">6j × 4m</button>
+          <button class="btn-example" onclick="loadExample('l')">10j × 5m</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-label">Parámetros detectados</div>
+        <div class="param-row">
+          <div class="param-group">
+            <label>Trabajos</label>
+            <div class="param-val" id="pv-jobs">—</div>
+          </div>
+          <div class="param-group">
+            <label>Máquinas</label>
+            <div class="param-val" id="pv-mach">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="error-banner"></div>
+
+      <button id="btn-calculate" onclick="runSolver()">Calcular Secuencia</button>
+
+      <div id="metrics-panel">
+        <div class="section-label">Métricas</div>
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="mc-label">Makespan (Taillard)</div>
+            <div class="mc-value violet" id="mc-ms">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="mc-label">Verificación</div>
+            <div class="mc-value rose" id="mc-ver">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="mc-label">Instancia</div>
+            <div class="mc-value dark" id="mc-size">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="mc-label">Tiempo CPU</div>
+            <div class="mc-value green" id="mc-cpu">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="perm-panel">
+        <div class="section-label">Permutación óptima</div>
+        <div id="perm-wrap"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MAIN PANEL -->
+  <div id="main-panel">
+    <div id="canvas-toolbar">
+      <span class="toolbar-title">Diagrama de Gantt</span>
+      <button class="btn-tool active" id="btn-ids" onclick="toggleIds()">IDs de trabajo</button>
+      <button class="btn-tool" id="btn-bymach" onclick="toggleByMachine()">Por máquina</button>
+      <div class="toolbar-divider"></div>
+      <button class="btn-tool" onclick="fitGantt()">Ajustar vista</button>
+    </div>
+
+    <div id="canvas-wrap">
+      <canvas id="gantt-canvas"></canvas>
+
+      <div id="empty-state">
+        <svg class="es-svg" width="72" height="56" viewBox="0 0 72 56" fill="none">
+          <rect x="4" y="8" width="24" height="10" rx="2" fill="#6D28D9"/>
+          <rect x="4" y="23" width="38" height="10" rx="2" fill="#6D28D9"/>
+          <rect x="4" y="38" width="17" height="10" rx="2" fill="#6D28D9"/>
+        </svg>
+        <div class="es-text">Carga una instancia y pulsa<br><strong>Calcular Secuencia</strong></div>
+      </div>
+
+      <div id="loading-overlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Ejecutando NEH…</div>
+      </div>
+
+      <div id="tooltip">
+        <div class="tt-title" id="tt-title">J0 · M0</div>
+        <div class="tt-row"><span class="tt-k">Inicio</span><span class="tt-v" id="tt-start">—</span></div>
+        <div class="tt-row"><span class="tt-k">Fin</span><span class="tt-v" id="tt-end">—</span></div>
+        <div class="tt-row"><span class="tt-k">Duración</span><span class="tt-v" id="tt-dur">—</span></div>
+        <div class="tt-row"><span class="tt-k">TPT trabajo</span><span class="tt-v" id="tt-tpt">—</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const EXAMPLES = {
+  s: {
+    name: 'ejemplo_4j3m',
+    text: `#
+4 3
+
+54 83 61
+83 94 37
+21 48 72
+67 31 55`
+  },
+  m: {
+    name: 'ejemplo_6j4m',
+    text: `#
+6 4
+
+54 83 61 47
+83 94 37 26
+21 48 72 55
+67 31 55 78
+43 60 89 32
+72 28 41 63`
+  },
+  l: {
+    name: 'ejemplo_10j5m',
+    text: `#
+10 5
+
+54 83 61 47 38
+83 94 37 26 71
+21 48 72 55 62
+67 31 55 78 43
+43 60 89 32 54
+72 28 41 63 80
+35 76 53 44 29
+58 42 67 91 36
+49 87 24 58 77
+63 19 84 32 65`
+  }
+};
+
+const JOB_COLORS = [
+  '#C084FC','#FB7185','#34D399','#FBBF24','#60A5FA',
+  '#F472B6','#A78BFA','#2DD4BF','#F97316','#818CF8',
+  '#E879F9','#4ADE80','#FCD34D','#38BDF8','#FF6B9D',
+  '#D946EF','#86EFAC','#FDE68A','#93C5FD','#F9A8D4',
+  '#7C3AED','#BE185D','#059669','#D97706','#2563EB'
+];
+
+const MACH_COLORS = [
+  '#A78BFA','#FB7185','#34D399','#FBBF24','#60A5FA',
+  '#E879F9','#2DD4BF','#F97316','#818CF8','#4ADE80'
+];
+
+let state = {
+  jobs: [],
+  nJobs: 0,
+  nMachines: 0,
+  perm: [],
+  C: [],
+  makespan: 0,
+  makespanVerify: 0,
+  showIds: true,
+  byMachine: false,
+  solved: false,
+  ganttScale: 1,
+  ganttOffX: 0,
+  dragging: false,
+  dragStartX: 0,
+  dragOriginX: 0
+};
+
+const canvas = document.getElementById('gantt-canvas');
+const ctx = canvas.getContext('2d');
+const PAD_LEFT = 56, PAD_TOP = 20, PAD_BOTTOM = 36, PAD_RIGHT = 20;
+
+function resizeCanvas() {
+  const wrap = document.getElementById('canvas-wrap');
+  canvas.width  = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+  if (state.solved) fitGantt();
+  else renderEmpty();
+}
+
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+const dropzone = document.getElementById('dropzone');
+
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault(); dropzone.classList.remove('dragover');
+  if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+});
+document.getElementById('file-input').addEventListener('change', e => {
+  if (e.target.files[0]) loadFile(e.target.files[0]);
+});
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const name = file.name.replace(/_inputs?\.txt$/i,'').replace(/\.[^.]+$/,'');
+    tryParse(ev.target.result, name);
+    document.getElementById('badge-name').textContent = file.name;
+    document.getElementById('file-badge').classList.add('visible');
+  };
+  reader.readAsText(file);
+}
+
+function clearFile() {
+  document.getElementById('file-badge').classList.remove('visible');
+  document.getElementById('file-input').value = '';
+  resetUI();
+}
+
+function resetUI() {
+  state.solved = false;
+  state.jobs = [];
+  setInstanceName('');
+  document.getElementById('pv-jobs').textContent = '—';
+  document.getElementById('pv-mach').textContent = '—';
+  document.getElementById('pv-jobs').classList.remove('loaded');
+  document.getElementById('pv-mach').classList.remove('loaded');
+  document.getElementById('btn-calculate').classList.remove('ready');
+  document.getElementById('metrics-panel').classList.remove('visible');
+  document.getElementById('perm-panel').classList.remove('visible');
+  document.getElementById('empty-state').style.display = 'flex';
+  renderEmpty();
+}
+
+function setInstanceName(name) {
+  const el = document.getElementById('instance-badge');
+  if (name) { el.textContent = name; el.classList.add('active'); }
+  else { el.textContent = 'NEH + Taillard Accelerations'; el.classList.remove('active'); }
+}
+
+function loadExample(size) {
+  const ex = EXAMPLES[size];
+  document.getElementById('file-badge').classList.remove('visible');
+  document.getElementById('file-input').value = '';
+  tryParse(ex.text, ex.name);
+  hideError();
+}
+
+function parseTaillard(text) {
+  const lines = text.split('\n');
+  let headerFound = false;
+  let nJobs = 0, nMachines = 0;
+  const jobs = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    const line = raw.trim();
+
+    // Skip empty lines and comments
+    if (line === '' || line.startsWith('#')) continue;
+
+    if (!headerFound) {
+      const parts = line.split(/[\s\t]+/);
+      if (parts.length < 2) throw new Error(`Línea ${i+1}: cabecera inválida "${line}"`);
+      nJobs     = parseInt(parts[0]);
+      nMachines = parseInt(parts[1]);
+      if (isNaN(nJobs) || isNaN(nMachines) || nJobs < 1 || nMachines < 1)
+        throw new Error(`Línea ${i+1}: nJobs/nMachines inválidos.`);
+      headerFound = true;
+      continue;
+    }
+
+    const vals = line.split(/[\s\t]+/).map(Number);
+    if (vals.length < nMachines) continue;
+    if (vals.some(isNaN)) throw new Error(`Línea ${i+1}: valores no numéricos.`);
+    jobs.push({ id: jobs.length, pt: vals.slice(0, nMachines), tpt: vals.slice(0,nMachines).reduce((a,b)=>a+b,0) });
+    if (jobs.length === nJobs) break;
+  }
+
+  if (!headerFound) throw new Error('No se encontró cabecera con nJobs y nMachines.');
+  if (jobs.length !== nJobs)
+    throw new Error(`Se esperaban ${nJobs} trabajos pero se parsearon ${jobs.length}.`);
+
+  return { jobs, nJobs, nMachines };
+}
+
+function tryParse(text, name) {
+  hideError();
+  try {
+    const { jobs, nJobs, nMachines } = parseTaillard(text);
+    state.jobs = jobs;
+    state.nJobs = nJobs;
+    state.nMachines = nMachines;
+    setInstanceName(name);
+    document.getElementById('pv-jobs').textContent = nJobs;
+    document.getElementById('pv-mach').textContent = nMachines;
+    document.getElementById('pv-jobs').classList.add('loaded');
+    document.getElementById('pv-mach').classList.add('loaded');
+    document.getElementById('btn-calculate').classList.add('ready');
+    state.solved = false;
+    document.getElementById('empty-state').style.display = 'flex';
+    renderEmpty();
+  } catch(e) {
+    showError('Error al parsear: ' + e.message);
+  }
+}
+
+function calcMakespan(perm, allJobs, nMachines) {
+  const n = perm.length, m = nMachines;
+  const C = Array.from({length:n}, ()=>new Array(m).fill(0));
+  C[0][0] = allJobs[perm[0]].pt[0];
+  for (let j=1;j<m;j++) C[0][j] = C[0][j-1] + allJobs[perm[0]].pt[j];
+  for (let i=1;i<n;i++) {
+    C[i][0] = C[i-1][0] + allJobs[perm[i]].pt[0];
+    for (let j=1;j<m;j++)
+      C[i][j] = Math.max(C[i-1][j], C[i][j-1]) + allJobs[perm[i]].pt[j];
+  }
+  return C[n-1][m-1];
+}
+
+function improveByShiftingJobToLeft(solJobs, k, nMachines) {
+  const m = nMachines;
+  const E = Array.from({length: k}, () => new Float64Array(m));
+  if (k > 0) {
+    E[0][0] = solJobs[0].pt[0];
+    for (let j=1;j<m;j++) E[0][j] = E[0][j-1] + solJobs[0].pt[j];
+    for (let i=1;i<k;i++) {
+      E[i][0] = E[i-1][0] + solJobs[i].pt[0];
+      for (let j=1;j<m;j++)
+        E[i][j] = Math.max(E[i-1][j], E[i][j-1]) + solJobs[i].pt[j];
+    }
+  }
+
+  const Q = Array.from({length: k+1}, () => new Float64Array(m));
+  if (k > 0) {
+    Q[k-1][m-1] = solJobs[k-1].pt[m-1];
+    for (let j=m-2;j>=0;j--) Q[k-1][j] = Q[k-1][j+1] + solJobs[k-1].pt[j];
+    for (let i=k-2;i>=0;i--) {
+      Q[i][m-1] = Q[i+1][m-1] + solJobs[i].pt[m-1];
+      for (let j=m-2;j>=0;j--)
+        Q[i][j] = Math.max(Q[i+1][j], Q[i][j+1]) + solJobs[i].pt[j];
+    }
+  }
+
+  const jobK = solJobs[k];
+  const F = Array.from({length: k+1}, () => new Float64Array(m));
+
+  F[0][0] = jobK.pt[0];
+  for (let j=1;j<m;j++) F[0][j] = F[0][j-1] + jobK.pt[j];
+
+  for (let i=1;i<=k;i++) {
+    F[i][0] = E[i-1][0] + jobK.pt[0];
+    for (let j=1;j<m;j++)
+      F[i][j] = Math.max(E[i-1][j], F[i][j-1]) + jobK.pt[j];
+  }
+
+  let bestPos = k;
+  let bestMs = Infinity;
+
+  for (let i=0;i<=k;i++) {
+    let ms = 0;
+    for (let j=0;j<m;j++) {
+      const val = F[i][j] + Q[i][j];
+      if (val > ms) ms = val;
+    }
+    if (ms < bestMs || (ms === bestMs && i < bestPos)) {
+      bestMs = ms;
+      bestPos = i;
+    }
+  }
+
+  if (bestPos < k) {
+    const jobToInsert = solJobs[k];
+    for (let i=k;i>bestPos;i--) solJobs[i] = solJobs[i-1];
+    solJobs[bestPos] = jobToInsert;
+  }
+
+  return bestMs;
+}
+
+function nehTaillard(jobs, nMachines) {
+  const n = jobs.length, m = nMachines;
+  const sorted = [...jobs].sort((a,b) => b.tpt - a.tpt);
+  const solJobs = [sorted[0]];
+
+  let ms = 0;
+  for (let i=1;i<n;i++) {
+    solJobs.push(sorted[i]);
+    ms = improveByShiftingJobToLeft(solJobs, i, m);
+  }
+
+  const perm = solJobs.map(j => j.id);
+  const C = Array.from({length:n}, ()=>new Array(m).fill(0));
+  C[0][0] = solJobs[0].pt[0];
+  for (let j=1;j<m;j++) C[0][j] = C[0][j-1] + solJobs[0].pt[j];
+  for (let i=1;i<n;i++) {
+    C[i][0] = C[i-1][0] + solJobs[i].pt[0];
+    for (let j=1;j<m;j++)
+      C[i][j] = Math.max(C[i-1][j], C[i][j-1]) + solJobs[i].pt[j];
+  }
+
+  const makespan = C[n-1][m-1];
+  const makespanVerify = calcMakespan(perm, jobs, m);
+
+  return { perm, solJobs, C, makespan, makespanVerify };
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-banner');
+  el.textContent = msg; el.classList.add('visible');
+}
+function hideError() { document.getElementById('error-banner').classList.remove('visible'); }
+
+function runSolver() {
+  if (!state.jobs.length) return;
+  hideError();
+  document.getElementById('loading-overlay').classList.add('visible');
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('btn-calculate').classList.remove('ready');
+
+  setTimeout(() => {
+    try {
+      const t0 = performance.now();
+      const res = nehTaillard(state.jobs, state.nMachines);
+      const cpu = performance.now() - t0;
+
+      state.perm       = res.perm;
+      state.solJobs    = res.solJobs;
+      state.C          = res.C;
+      state.makespan   = res.makespan;
+      state.makespanVerify = res.makespanVerify;
+      state.solved     = true;
+
+      document.getElementById('mc-ms').textContent  = res.makespan;
+      document.getElementById('mc-ver').textContent = res.makespanVerify;
+      document.getElementById('mc-size').textContent = `${state.nJobs}×${state.nMachines}`;
+      document.getElementById('mc-cpu').textContent = cpu.toFixed(2) + ' ms';
+      document.getElementById('metrics-panel').classList.add('visible');
+
+      renderPermutation(res.solJobs);
+      fitGantt();
+      renderGantt();
+
+    } catch(e) {
+      showError('Error en el algoritmo: ' + e.message);
+      document.getElementById('empty-state').style.display = 'flex';
+    } finally {
+      document.getElementById('loading-overlay').classList.remove('visible');
+      document.getElementById('btn-calculate').classList.add('ready');
+    }
+  }, 60);
+}
+
+function renderPermutation(solJobs) {
+  const wrap = document.getElementById('perm-wrap');
+  wrap.innerHTML = '';
+  solJobs.forEach(job => {
+    const tag = document.createElement('span');
+    tag.className = 'perm-tag';
+    tag.textContent = `J${job.id}`;
+    const color = JOB_COLORS[job.id % JOB_COLORS.length];
+    tag.style.background = color + 'CC';
+    tag.style.color = '#fff';
+    wrap.appendChild(tag);
+  });
+  document.getElementById('perm-panel').classList.add('visible');
+}
+
+function fitGantt() {
+  if (!state.solved) return;
+  const W = canvas.width;
+  state.ganttScale = (W - PAD_LEFT - PAD_RIGHT) / state.makespan;
+  state.ganttOffX  = 0;
+  renderGantt();
+}
+
+function renderEmpty() {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  ctx.save();
+  ctx.strokeStyle = 'rgba(109,40,217,0.05)';
+  ctx.lineWidth = 1;
+  for (let x=0;x<W;x+=40){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y=0;y<H;y+=40){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+  ctx.restore();
+}
+
+function hexAlpha(hex, alpha) {
+  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function niceStep(range, targetTicks) {
+  const raw = range / targetTicks;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const frac = raw / mag;
+  let step;
+  if (frac < 1.5) step = 1;
+  else if (frac < 3.5) step = 2;
+  else if (frac < 7.5) step = 5;
+  else step = 10;
+  return step * mag;
+}
+
+function renderGantt() {
+  if (!state.solved) { renderEmpty(); return; }
+
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const n = state.nJobs, m = state.nMachines;
+  const sc = state.ganttScale;
+  const offX = state.ganttOffX;
+
+  const chartH = H - PAD_TOP - PAD_BOTTOM;
+  const rowH = Math.max(22, Math.min(38, chartH / m));
+
+  ctx.fillStyle = '#f5f2fc';
+  ctx.fillRect(0, 0, W, H);
+
+  for (let mIdx=0;mIdx<m;mIdx++) {
+    if (mIdx % 2 === 0) {
+      ctx.fillStyle = 'rgba(109,40,217,0.04)';
+      ctx.fillRect(PAD_LEFT, PAD_TOP + mIdx*rowH, W - PAD_LEFT - PAD_RIGHT, rowH);
+    }
+  }
+
+  const step = niceStep(state.makespan, 5);
+  ctx.save();
+  ctx.font = '11px JetBrains Mono, monospace';
+  ctx.fillStyle = '#8B76B5';
+  ctx.textAlign = 'center';
+  for (let t=0; t<=state.makespan + step; t+=step) {
+    const sx = PAD_LEFT + t * sc + offX;
+    if (sx < PAD_LEFT - 1 || sx > W - PAD_RIGHT + 1) continue;
+    ctx.strokeStyle = 'rgba(109,40,217,0.1)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(sx, PAD_TOP); ctx.lineTo(sx, H - PAD_BOTTOM); ctx.stroke();
+    ctx.strokeStyle = 'rgba(109,40,217,0.35)';
+    ctx.beginPath(); ctx.moveTo(sx, H - PAD_BOTTOM); ctx.lineTo(sx, H - PAD_BOTTOM + 4); ctx.stroke();
+    ctx.fillText(t, sx, H - PAD_BOTTOM + 15);
+  }
+  ctx.restore();
+
+  for (let i=0;i<n;i++) {
+    const job = state.solJobs[i];
+    for (let mIdx=0;mIdx<m;mIdx++) {
+      const end   = state.C[i][mIdx];
+      const dur   = job.pt[mIdx];
+      const start = end - dur;
+      const sx    = PAD_LEFT + start * sc + offX;
+      const bw    = dur * sc;
+      const sy    = PAD_TOP + mIdx * rowH;
+      const bh    = rowH - 1;
+
+      const color = state.byMachine
+        ? MACH_COLORS[mIdx % MACH_COLORS.length]
+        : JOB_COLORS[job.id % JOB_COLORS.length];
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(PAD_LEFT, PAD_TOP, W - PAD_LEFT - PAD_RIGHT, H - PAD_TOP - PAD_BOTTOM);
+      ctx.clip();
+
+      ctx.fillStyle = hexAlpha(color, 0.82);
+      if (ctx.roundRect) {
+        ctx.beginPath(); ctx.roundRect(sx, sy+0.5, bw, bh-1, 3); ctx.fill();
+        ctx.strokeStyle = color; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.roundRect(sx, sy+0.5, bw, bh-1, 3); ctx.stroke();
+      } else {
+        ctx.fillRect(sx, sy+0.5, bw, bh-1);
+        ctx.strokeStyle = color; ctx.lineWidth = 1;
+        ctx.strokeRect(sx, sy+0.5, bw, bh-1);
+      }
+
+      if (state.showIds && bw > 16) {
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+        ctx.font = `600 10px JetBrains Mono, monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`J${job.id}`, sx + bw/2, sy + bh/2);
+      }
+
+      ctx.restore();
+    }
+  }
+
+  ctx.save();
+  ctx.font = '600 11px JetBrains Mono, monospace';
+  ctx.fillStyle = '#4C3580';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  for (let mIdx=0;mIdx<m;mIdx++) {
+    ctx.fillText(`M${mIdx}`, PAD_LEFT - 6, PAD_TOP + mIdx * rowH + rowH/2);
+  }
+  ctx.restore();
+
+  const msx = PAD_LEFT + state.makespan * sc + offX;
+  if (msx >= PAD_LEFT && msx <= W - PAD_RIGHT) {
+    ctx.save();
+    ctx.strokeStyle = '#DC2626';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath(); ctx.moveTo(msx, PAD_TOP - 4); ctx.lineTo(msx, H - PAD_BOTTOM); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#DC2626';
+    ctx.font = 'bold 10px JetBrains Mono, monospace';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(`C = ${state.makespan}`, msx - 3, PAD_TOP - 2);
+    ctx.restore();
+  }
+
+  ctx.strokeStyle = 'rgba(109,40,217,0.3)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(PAD_LEFT, H - PAD_BOTTOM);
+  ctx.lineTo(W - PAD_RIGHT, H - PAD_BOTTOM);
+  ctx.stroke();
+}
+
+function toggleIds() {
+  state.showIds = !state.showIds;
+  document.getElementById('btn-ids').classList.toggle('active', state.showIds);
+  renderGantt();
+}
+
+function toggleByMachine() {
+  state.byMachine = !state.byMachine;
+  document.getElementById('btn-bymach').classList.toggle('active', state.byMachine);
+  renderGantt();
+}
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  if (!state.solved) return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const factor = e.deltaY < 0 ? 1.14 : 0.88;
+  const oldScale = state.ganttScale;
+  const newScale = Math.max(0.05, oldScale * factor);
+  const worldX = (mx - PAD_LEFT - state.ganttOffX) / oldScale;
+  state.ganttOffX = mx - PAD_LEFT - worldX * newScale;
+  state.ganttScale = newScale;
+  renderGantt();
+}, { passive: false });
+
+canvas.addEventListener('mousedown', e => {
+  state.dragging = true;
+  state.dragStartX  = e.clientX;
+  state.dragOriginX = state.ganttOffX;
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (state.dragging) {
+    state.ganttOffX = state.dragOriginX + (e.clientX - state.dragStartX);
+    renderGantt();
+    return;
+  }
+
+  if (!state.solved) return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
+  const chartH = canvas.height - PAD_TOP - PAD_BOTTOM;
+  const rowH = Math.max(22, Math.min(38, chartH / state.nMachines));
+
+  const tooltip = document.getElementById('tooltip');
+  let found = null;
+
+  for (let i=0;i<state.nJobs;i++) {
+    const job = state.solJobs[i];
+    for (let mIdx=0;mIdx<state.nMachines;mIdx++) {
+      const end   = state.C[i][mIdx];
+      const dur   = job.pt[mIdx];
+      const start = end - dur;
+      const sx    = PAD_LEFT + start * state.ganttScale + state.ganttOffX;
+      const bw    = dur * state.ganttScale;
+      const sy    = PAD_TOP + mIdx * rowH;
+      const bh    = rowH - 1;
+      if (mx >= sx && mx <= sx+bw && my >= sy && my <= sy+bh) {
+        found = { job, mIdx, start, end, dur };
+      }
+    }
+  }
+
+  if (found) {
+    document.getElementById('tt-title').textContent  = `J${found.job.id} · M${found.mIdx}`;
+    document.getElementById('tt-start').textContent  = found.start;
+    document.getElementById('tt-end').textContent    = found.end;
+    document.getElementById('tt-dur').textContent    = found.dur;
+    document.getElementById('tt-tpt').textContent    = found.job.tpt;
+    let tx = e.clientX - rect.left + 14;
+    let ty = e.clientY - rect.top  + 14;
+    if (tx + 165 > canvas.width)  tx = e.clientX - rect.left - 175;
+    if (ty + 110 > canvas.height) ty = e.clientY - rect.top  - 120;
+    tooltip.style.left = tx + 'px';
+    tooltip.style.top  = ty + 'px';
+    tooltip.classList.add('visible');
+  } else {
+    tooltip.classList.remove('visible');
+  }
+});
+
+canvas.addEventListener('mouseup',    () => { state.dragging = false; });
+canvas.addEventListener('mouseleave', () => {
+  state.dragging = false;
+  document.getElementById('tooltip').classList.remove('visible');
+});
+
+</script>
+</body>
+</html>

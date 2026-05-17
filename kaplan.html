@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Insurance Survival — Kaplan-Meier</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg:      #F4F7FB;
+  --bg2:     #EBF0F8;
+  --bg3:     #E0E8F4;
+  --sidebar: #1E3A6E;
+  --sidebar2:#25477F;
+  --sidebar3:#2D5591;
+  --s-text:  #F4F7FB;
+  --s-text2: #8A9CB8;
+  --s-border:rgba(255,255,255,0.08);
+  --red:     #2AACA8;
+  --red-l:   #3DC4C0;
+  --amber:   #1E8A87;
+  --blue:    #25477F;
+  --text:    #1A2D50;
+  --text2:   #4A5E7A;
+  --text3:   #8A9CB8;
+  --border:  rgba(30,58,110,0.10);
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;overflow:hidden}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--sidebar3);border-radius:2px}
+
+/* ─── HEADER ─── */
+#header{
+  position:fixed;top:0;left:0;right:0;height:62px;
+  background:var(--sidebar);
+  display:flex;align-items:center;gap:12px;
+  padding:0 20px;
+  z-index:100;
+  border-bottom:1px solid var(--s-border);
+}
+
+.logo-icon{
+  width:36px;height:36px;border-radius:9px;flex-shrink:0;
+  background:linear-gradient(135deg,#1E3A6E,#25477F);
+  display:flex;align-items:center;justify-content:center;
+}
+
+.header-title{
+  font-family:'Syne',sans-serif;font-weight:800;font-size:17px;
+  color:var(--s-text);letter-spacing:-0.01em;
+  flex:1;
+}
+
+.header-title span{color:#3DC4C0;font-weight:700}
+
+#instance-badge{
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  color:var(--s-text2);
+  background:rgba(255,255,255,0.06);
+  border:1px solid var(--s-border);
+  border-radius:5px;padding:4px 10px;
+  max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+
+/* ─── LAYOUT ─── */
+#body-wrap{
+  display:flex;
+  height:calc(100vh - 62px);
+  margin-top:62px;
+}
+
+/* ─── SIDEBAR ─── */
+#sidebar{
+  width:288px;min-width:288px;
+  background:var(--sidebar);
+  overflow-y:auto;overflow-x:hidden;
+  display:flex;flex-direction:column;
+}
+
+.sb-section{
+  padding:14px 16px;
+  border-bottom:1px solid var(--s-border);
+}
+
+.sb-label{
+  font-size:9.5px;font-weight:700;letter-spacing:0.13em;
+  text-transform:uppercase;color:var(--s-text2);
+  margin-bottom:9px;
+}
+
+/* Dropzone */
+#dropzone{
+  border:1.5px dashed rgba(42,172,168,0.4);
+  border-radius:8px;padding:16px 10px;
+  text-align:center;cursor:pointer;
+  background:rgba(42,172,168,0.04);
+  transition:background .2s,border-color .2s;
+}
+#dropzone:hover,#dropzone.drag-over{
+  background:rgba(42,172,168,0.09);border-color:var(--red);
+}
+.dz-icon{font-size:20px;opacity:.5;margin-bottom:5px}
+.dz-text{font-size:11.5px;color:var(--s-text2);line-height:1.5}
+.dz-sub{font-size:10px;color:#6B7F96;margin-top:3px}
+#file-input{display:none}
+
+#file-badge{
+  display:none;align-items:center;gap:7px;
+  background:rgba(4,120,87,0.12);border:1px solid rgba(4,120,87,0.3);
+  border-radius:6px;padding:6px 10px;margin-top:7px;
+  font-size:10.5px;font-family:'JetBrains Mono',monospace;
+}
+#file-badge.visible{display:flex}
+.fb-name{flex:1;color:#34D399;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fb-clear{cursor:pointer;color:var(--s-text2);font-size:15px;line-height:1;transition:color .15s}
+.fb-clear:hover{color:#FCA5A5}
+
+#error-banner{
+  display:none;background:rgba(42,172,168,0.15);border:1px solid rgba(42,172,168,0.35);
+  border-radius:6px;padding:8px 10px;margin-top:7px;
+  font-size:10.5px;font-family:'JetBrains Mono',monospace;color:#FCA5A5;line-height:1.5;
+}
+#error-banner.visible{display:block}
+
+/* Selects */
+.sel-group{display:flex;flex-direction:column;gap:4px;margin-bottom:9px}
+.sel-group:last-child{margin-bottom:0}
+.sel-group label{font-size:9.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--s-text2)}
+
+.custom-select{
+  position:relative;
+}
+.custom-select select{
+  width:100%;padding:7px 28px 7px 10px;
+  background:var(--sidebar2);border:1px solid rgba(255,255,255,0.1);
+  border-radius:6px;color:var(--s-text);
+  font-family:'Inter',sans-serif;font-size:11.5px;
+  appearance:none;-webkit-appearance:none;outline:none;cursor:pointer;
+  transition:border-color .15s;
+}
+.custom-select select:focus{border-color:rgba(42,172,168,0.5)}
+.custom-select select option{background:var(--sidebar2)}
+.custom-select::after{
+  content:'';position:absolute;right:9px;top:50%;transform:translateY(-50%);
+  width:0;height:0;
+  border-left:4px solid transparent;border-right:4px solid transparent;
+  border-top:5px solid var(--s-text2);pointer-events:none;
+}
+
+/* Groups checkboxes */
+#groups-section{display:none}
+#groups-list{
+  max-height:130px;overflow-y:auto;
+  display:flex;flex-direction:column;gap:5px;
+  margin-top:2px;
+}
+.group-cb{
+  display:flex;align-items:center;gap:7px;cursor:pointer;
+  padding:3px 4px;border-radius:4px;
+  transition:background .12s;
+}
+.group-cb:hover{background:rgba(255,255,255,0.05)}
+.group-cb input{accent-color:var(--red);width:13px;height:13px;cursor:pointer}
+.group-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.group-name{font-size:11px;color:var(--s-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+
+/* Toggles */
+.toggle-row{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:9px;
+}
+.toggle-row:last-child{margin-bottom:0}
+.toggle-label{font-size:11px;color:var(--s-text2)}
+
+.toggle-pill{
+  position:relative;width:34px;height:18px;cursor:pointer;flex-shrink:0;
+}
+.toggle-pill input{opacity:0;width:0;height:0}
+.toggle-pill .pill{
+  position:absolute;inset:0;
+  background:rgba(255,255,255,0.15);border-radius:9px;
+  transition:background .2s;
+}
+.toggle-pill input:checked~.pill{background:var(--red)}
+.toggle-pill .knob{
+  position:absolute;top:2px;left:2px;
+  width:14px;height:14px;background:#fff;border-radius:50%;
+  transition:transform .2s;
+  box-shadow:0 1px 3px rgba(0,0,0,.3);
+}
+.toggle-pill input:checked~.knob{transform:translateX(16px)}
+
+/* CTA */
+#btn-run{
+  width:100%;padding:11px;margin-top:2px;
+  background:linear-gradient(135deg,#1E3A6E,#25477F);
+  border:none;border-radius:8px;color:#fff;
+  font-family:'Syne',sans-serif;font-size:12.5px;font-weight:700;
+  letter-spacing:.07em;text-transform:uppercase;
+  cursor:pointer;transition:opacity .15s,transform .1s;
+  opacity:.4;pointer-events:none;
+}
+#btn-run.ready{opacity:1;pointer-events:auto}
+#btn-run.ready:hover{opacity:.88}
+#btn-run.ready:active{transform:scale(.98)}
+
+/* Summary cards */
+#summary-panel{display:none}
+#summary-panel.visible{display:block}
+.sum-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.sum-card{
+  background:var(--sidebar2);border:1px solid var(--s-border);
+  border-radius:8px;padding:10px;
+}
+.sum-card-label{font-size:8.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--s-text2);margin-bottom:4px}
+.sum-card-val{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600;line-height:1}
+.sum-card-val.white{color:var(--s-text)}
+.sum-card-val.red{color:#FDA4AF}
+.sum-card-val.amber{color:#FCD34D}
+.sum-card-val.blue{color:#93C5FD}
+
+/* ─── MAIN PANEL ─── */
+#main-panel{
+  flex:1;display:flex;flex-direction:column;min-width:0;
+}
+
+#chart-toolbar{
+  height:48px;background:#fff;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;padding:0 18px;flex-shrink:0;
+}
+.chart-title{
+  font-size:10px;font-weight:700;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--text3);flex:1;
+}
+#btn-export{
+  padding:6px 13px;
+  border:1px solid var(--border);border-radius:6px;
+  background:var(--bg2);color:var(--text2);
+  font-family:'Inter',sans-serif;font-size:11px;font-weight:600;
+  cursor:pointer;transition:background .15s;white-space:nowrap;
+}
+#btn-export:hover{background:var(--bg3)}
+
+#chart-area{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+#canvas-wrap{flex:1;position:relative;overflow:hidden}
+
+#km-canvas{display:block;width:100%;height:100%;cursor:crosshair}
+
+/* empty state */
+#empty-state{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:12px;pointer-events:none;
+}
+.es-text{font-size:12.5px;color:var(--text3);text-align:center;line-height:1.6}
+
+/* loading overlay */
+#loading-overlay{
+  position:absolute;inset:0;background:rgba(244,247,251,0.88);
+  display:none;align-items:center;justify-content:center;
+  flex-direction:column;gap:14px;z-index:10;
+}
+#loading-overlay.visible{display:flex}
+.spinner{
+  width:34px;height:34px;
+  border:2.5px solid rgba(42,172,168,0.2);
+  border-top-color:var(--red);border-radius:50%;
+  animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:11px;color:var(--text2);font-family:'JetBrains Mono',monospace}
+
+/* Tooltip */
+#tooltip{
+  position:fixed;display:none;
+  background:var(--sidebar);border:1px solid var(--s-border);
+  border-radius:8px;padding:10px 13px;z-index:50;
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+  box-shadow:0 4px 20px rgba(0,0,0,.35);
+  pointer-events:none;min-width:180px;
+}
+#tooltip.visible{display:block}
+.tt-time{color:var(--s-text2);font-size:10px;margin-bottom:7px}
+.tt-row{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+.tt-row:last-child{margin-bottom:0}
+.tt-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.tt-name{color:var(--s-text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100px}
+.tt-s{color:var(--s-text);font-weight:600;margin-left:auto}
+.tt-n{color:#6B7F96;font-size:10px;margin-left:4px}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+  <div class="header-title">Kaplan–Meier<span>[Survival Analysis]</span></div>
+  <div id="instance-badge">Análisis de Supervivencia · ICSO Analytics</div>
+</div>
+
+<div id="body-wrap">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+
+    <!-- 1. DATOS -->
+    <div class="sb-section">
+      <div class="sb-label">Datos</div>
+      <div id="dropzone" onclick="document.getElementById('file-input').click()">
+        <div class="dz-icon">📂</div>
+        <div class="dz-text">Arrastra CSV / XLSX / XLS<br>o haz clic para seleccionar</div>
+        <div class="dz-sub">PapaParse · SheetJS</div>
+      </div>
+      <input type="file" id="file-input" accept=".csv,.xlsx,.xls">
+      <div id="file-badge">
+        <span class="fb-name" id="fb-name"></span>
+        <span class="fb-clear" onclick="clearData()">×</span>
+      </div>
+      <div id="error-banner"></div>
+    </div>
+
+    <!-- 2. VARIABLES -->
+    <div class="sb-section">
+      <div class="sb-label">Variables</div>
+      <div class="sel-group">
+        <label>Variable de tiempo</label>
+        <div class="custom-select"><select id="sel-time"><option>— cargar datos —</option></select></div>
+      </div>
+      <div class="sel-group">
+        <label>Evento (0=censurado · 1=evento)</label>
+        <div class="custom-select"><select id="sel-event"><option>— cargar datos —</option></select></div>
+      </div>
+      <div class="sel-group">
+        <label>Segmentación</label>
+        <div class="custom-select"><select id="sel-group" onchange="onGroupChange()"><option value="">— sin segmentación —</option></select></div>
+      </div>
+    </div>
+
+    <!-- 3. GRUPOS -->
+    <div class="sb-section" id="groups-section">
+      <div class="sb-label">Grupos a mostrar</div>
+      <div id="groups-list"></div>
+    </div>
+
+    <!-- 4. OPCIONES -->
+    <div class="sb-section">
+      <div class="sb-label">Opciones</div>
+      <div class="toggle-row">
+        <span class="toggle-label">Intervalos de confianza 95%</span>
+        <label class="toggle-pill"><input type="checkbox" id="tog-ci" checked onchange="redraw()"><div class="pill"></div><div class="knob"></div></label>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">Marcas de censura</span>
+        <label class="toggle-pill"><input type="checkbox" id="tog-cens" checked onchange="redraw()"><div class="pill"></div><div class="knob"></div></label>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">Tabla de riesgo</span>
+        <label class="toggle-pill"><input type="checkbox" id="tog-risk" checked onchange="redraw()"><div class="pill"></div><div class="knob"></div></label>
+      </div>
+    </div>
+
+    <!-- 5. EJECUTAR -->
+    <div class="sb-section">
+      <button id="btn-run" onclick="runAnalysis()">▶ Generar Supervivencia</button>
+    </div>
+
+    <!-- 6. RESUMEN -->
+    <div class="sb-section" id="summary-panel">
+      <div class="sb-label">Resumen</div>
+      <div class="sum-grid">
+        <div class="sum-card"><div class="sum-card-label">Pólizas</div><div class="sum-card-val white" id="sum-n">—</div></div>
+        <div class="sum-card"><div class="sum-card-label">Eventos</div><div class="sum-card-val red" id="sum-ev">—</div></div>
+        <div class="sum-card"><div class="sum-card-label">Censurados</div><div class="sum-card-val blue" id="sum-cens">—</div></div>
+        <div class="sum-card"><div class="sum-card-label">Grupos</div><div class="sum-card-val amber" id="sum-grp">—</div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MAIN PANEL -->
+  <div id="main-panel">
+    <div id="chart-toolbar">
+      <span class="chart-title">Curva de Supervivencia de Kaplan–Meier</span>
+      <button id="btn-export" onclick="exportPNG()">↓ Exportar PNG</button>
+    </div>
+
+    <div id="chart-area">
+      <div id="canvas-wrap">
+        <canvas id="km-canvas"></canvas>
+
+        <div id="empty-state">
+          <svg width="72" height="56" viewBox="0 0 72 56" fill="none" style="opacity:.12">
+            <path d="M4 50 L4 8 Q12 8 14 30 Q16 50 22 50 Q28 50 30 20 Q32 2 38 2 Q44 2 46 28 Q48 50 54 50 Q60 50 62 35 L68 35" stroke="#B91C1C" stroke-width="3" stroke-linecap="round" fill="none"/>
+          </svg>
+          <div class="es-text">Carga un fichero y pulsa<br><strong>Generar Supervivencia</strong></div>
+        </div>
+
+        <div id="loading-overlay">
+          <div class="spinner"></div>
+          <div class="loading-text">Calculando KM…</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+// ─────────────────────────────────────────────
+// CONSTANTS
+// ─────────────────────────────────────────────
+const KM_COLORS = [
+  '#B91C1C','#1D4ED8','#B45309','#15803D','#7E22CE',
+  '#0E7490','#BE185D','#1E40AF','#A16207','#166534',
+  '#6D28D9','#0F766E','#9D174D','#1D4ED8','#92400E'
+];
+
+const PAD = { top: 24, right: 20, bottom: 42, left: 58 };
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let df = [];          // array of row objects
+let columns = [];
+let results = [];     // [{label, color, km}]
+let mouseX = null;
+let mouseY = null;
+
+// ─────────────────────────────────────────────
+// CANVAS
+// ─────────────────────────────────────────────
+const canvas = document.getElementById('km-canvas');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+  const wrap = document.getElementById('canvas-wrap');
+  canvas.width  = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+  if (results.length) drawChart();
+  else drawEmpty();
+}
+
+window.addEventListener('resize', () => { resizeCanvas(); });
+
+// ─────────────────────────────────────────────
+// FILE HANDLING
+// ─────────────────────────────────────────────
+const dropzone = document.getElementById('dropzone');
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault(); dropzone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+document.getElementById('file-input').addEventListener('change', e => {
+  if (e.target.files[0]) handleFile(e.target.files[0]);
+});
+
+function handleFile(file) {
+  hideError();
+  const ext = file.name.split('.').pop().toLowerCase();
+  const instanceName = file.name.replace(/\.[^.]+$/, '');
+  document.getElementById('fb-name').textContent = file.name;
+  document.getElementById('file-badge').classList.add('visible');
+  document.getElementById('instance-badge').textContent = instanceName;
+
+  if (ext === 'csv') {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const res = Papa.parse(ev.target.result, { header: true, dynamicTyping: true, skipEmptyLines: true });
+      if (res.errors.length && !res.data.length) { showError('Error CSV: ' + res.errors[0].message); return; }
+      loadData(res.data);
+    };
+    reader.readAsText(file);
+  } else if (ext === 'xlsx' || ext === 'xls') {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(ws, { defval: null });
+        loadData(data);
+      } catch(e) { showError('Error Excel: ' + e.message); }
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    showError('Formato no soportado. Usa CSV, XLSX o XLS.');
+  }
+}
+
+function loadData(data) {
+  if (!data || !data.length) { showError('Fichero vacío o sin filas.'); return; }
+  df = data;
+  columns = Object.keys(data[0]);
+  populateSelects();
+  document.getElementById('btn-run').classList.add('ready');
+  results = [];
+  drawEmpty();
+  document.getElementById('table-wrap').classList.remove('visible');
+  document.getElementById('summary-panel').classList.remove('visible');
+}
+
+function clearData() {
+  df = []; columns = []; results = [];
+  document.getElementById('file-badge').classList.remove('visible');
+  document.getElementById('file-input').value = '';
+  document.getElementById('instance-badge').textContent = 'Kaplan–Meier · Análisis de Supervivencia';
+  document.getElementById('btn-run').classList.remove('ready');
+  document.getElementById('groups-section').style.display = 'none';
+  document.getElementById('summary-panel').classList.remove('visible');
+  document.getElementById('table-wrap').classList.remove('visible');
+  ['sel-time','sel-event','sel-group'].forEach(id => {
+    const s = document.getElementById(id);
+    s.innerHTML = '<option>— cargar datos —</option>';
+  });
+  drawEmpty();
+  hideError();
+}
+
+function populateSelects() {
+  const timeMatch  = columns.filter(c => /antig/i.test(c));
+  const eventMatch = columns.filter(c => /anulac/i.test(c));
+  const groupHints = /ramo|subramo|product|tipo|seg|canal|tarif/i;
+
+  function fillSelect(id, preferred, fallback, addEmpty) {
+    const sel = document.getElementById(id);
+    sel.innerHTML = '';
+    if (addEmpty) {
+      const opt = document.createElement('option');
+      opt.value = ''; opt.textContent = '— sin segmentación —';
+      sel.appendChild(opt);
+    }
+    const cols = preferred.length ? preferred : fallback;
+    cols.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c; opt.textContent = c;
+      sel.appendChild(opt);
+    });
+    if (!addEmpty && cols.length) sel.value = cols[0];
+  }
+
+  fillSelect('sel-time',  timeMatch,  columns, false);
+  fillSelect('sel-event', eventMatch, columns, false);
+
+  const grpSel = document.getElementById('sel-group');
+  grpSel.innerHTML = '<option value="">— sin segmentación —</option>';
+  columns.forEach(c => {
+    const opt = document.createElement('option'); opt.value = c; opt.textContent = c;
+    grpSel.appendChild(opt);
+  });
+  const autoGrp = columns.find(c => groupHints.test(c));
+  if (autoGrp) grpSel.value = autoGrp;
+
+  onGroupChange();
+}
+
+// ─────────────────────────────────────────────
+// GROUP CHANGE
+// ─────────────────────────────────────────────
+function onGroupChange() {
+  const col = document.getElementById('sel-group').value;
+  const sec = document.getElementById('groups-section');
+  if (!col || !df.length) { sec.style.display = 'none'; return; }
+
+  const unique = [...new Set(df.map(r => r[col]))].filter(v => v !== null && v !== undefined && v !== '').sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric: true}));
+  const list = document.getElementById('groups-list');
+  list.innerHTML = '';
+
+  unique.forEach((val, idx) => {
+    const color = KM_COLORS[idx % KM_COLORS.length];
+    const label = document.createElement('label');
+    label.className = 'group-cb';
+    label.innerHTML = `
+      <input type="checkbox" value="${val}" checked>
+      <span class="group-dot" style="background:${color}"></span>
+      <span class="group-name">${val}</span>
+    `;
+    list.appendChild(label);
+  });
+
+  sec.style.display = 'block';
+}
+
+// ─────────────────────────────────────────────
+// KAPLAN–MEIER ALGORITHM
+// ─────────────────────────────────────────────
+function computeKM(times, events) {
+  // Clean
+  const data = [];
+  for (let i = 0; i < times.length; i++) {
+    const t = Number(times[i]), e = Number(events[i]);
+    if (isNaN(t) || isNaN(e) || t < 0) continue;
+    data.push({ t, e: e === 1 ? 1 : 0 });
+  }
+  data.sort((a, b) => a.t - b.t);
+  const n = data.length;
+  if (!n) return null;
+
+  const nTotal    = n;
+  const nEvents   = data.filter(d => d.e === 1).length;
+  const nCensored = nTotal - nEvents;
+  const maxT      = data[n - 1].t;
+
+  // Unique times
+  const timeMap = new Map();
+  for (const d of data) {
+    if (!timeMap.has(d.t)) timeMap.set(d.t, { d: 0, c: 0 });
+    if (d.e === 1) timeMap.get(d.t).d++;
+    else           timeMap.get(d.t).c++;
+  }
+  const uniqueTimes = [...timeMap.keys()].sort((a, b) => a - b);
+
+  const steps = [{ t: 0, S: 1, lower: 1, upper: 1, nAtRisk: n, d: 0, c: 0 }];
+  const censoredPts = [];
+
+  let S = 1;
+  let nAtRisk = n;
+  let sumGW = 0;
+
+  for (const t of uniqueTimes) {
+    const { d, c } = timeMap.get(t);
+
+    if (d > 0) {
+      S = S * (1 - d / nAtRisk);
+      if (nAtRisk > d) sumGW += d / (nAtRisk * (nAtRisk - d));
+      const se = S * Math.sqrt(sumGW);
+      const lower = Math.max(0, S - 1.96 * se);
+      const upper = Math.min(1, S + 1.96 * se);
+      steps.push({ t, S, lower, upper, nAtRisk, d, c });
+    }
+
+    if (c > 0) censoredPts.push({ t, S });
+
+    nAtRisk -= (d + c);
+  }
+
+  // Median
+  const medStep = steps.find(s => s.S <= 0.5);
+  const median  = medStep ? medStep.t : null;
+
+  return { steps, censoredPts, median, nTotal, nEvents, nCensored, maxT };
+}
+
+function getSAtTime(steps, t) {
+  let S = 1;
+  for (const s of steps) {
+    if (s.t <= t) S = s.S;
+    else break;
+  }
+  return S;
+}
+
+function getNAtRisk(steps, t) {
+  let n = steps[0].nAtRisk;
+  for (const s of steps) {
+    if (s.t <= t) n = s.nAtRisk;
+    else break;
+  }
+  return n;
+}
+
+// ─────────────────────────────────────────────
+// RUN ANALYSIS
+// ─────────────────────────────────────────────
+function showError(msg) {
+  const el = document.getElementById('error-banner');
+  el.textContent = msg; el.classList.add('visible');
+}
+function hideError() { document.getElementById('error-banner').classList.remove('visible'); }
+
+function runAnalysis() {
+  if (!df.length) return;
+  hideError();
+
+  const timeCol  = document.getElementById('sel-time').value;
+  const eventCol = document.getElementById('sel-event').value;
+  const groupCol = document.getElementById('sel-group').value;
+
+  if (!timeCol || !eventCol) { showError('Selecciona las variables de tiempo y evento.'); return; }
+
+  document.getElementById('loading-overlay').classList.add('visible');
+  document.getElementById('empty-state').style.display = 'none';
+
+  setTimeout(() => {
+    try {
+      results = [];
+
+      if (!groupCol) {
+        const times  = df.map(r => r[timeCol]);
+        const events = df.map(r => r[eventCol]);
+        const km = computeKM(times, events);
+        if (!km) throw new Error('No hay datos válidos con tiempo >= 0.');
+        results.push({ label: 'Total', color: KM_COLORS[0], km });
+      } else {
+        const checked = [...document.querySelectorAll('#groups-list input[type=checkbox]:checked')].map(cb => cb.value);
+        if (!checked.length) throw new Error('Selecciona al menos un grupo.');
+
+        checked.forEach((val, idx) => {
+          const rows   = df.filter(r => String(r[groupCol]) === String(val));
+          const times  = rows.map(r => r[timeCol]);
+          const events = rows.map(r => r[eventCol]);
+          const km = computeKM(times, events);
+          if (km) results.push({ label: String(val), color: KM_COLORS[idx % KM_COLORS.length], km });
+        });
+
+        if (!results.length) throw new Error('Ningún grupo tiene datos válidos.');
+      }
+
+      // Summary
+      const totN  = results.reduce((s, r) => s + r.km.nTotal, 0);
+      const totEv = results.reduce((s, r) => s + r.km.nEvents, 0);
+      const totC  = results.reduce((s, r) => s + r.km.nCensored, 0);
+      document.getElementById('sum-n').textContent    = totN;
+      document.getElementById('sum-ev').textContent   = totEv;
+      document.getElementById('sum-cens').textContent = totC;
+      document.getElementById('sum-grp').textContent  = results.length;
+      document.getElementById('summary-panel').classList.add('visible');
+
+      fitAndDraw();
+
+    } catch(e) {
+      showError(e.message);
+      document.getElementById('empty-state').style.display = 'flex';
+    } finally {
+      document.getElementById('loading-overlay').classList.remove('visible');
+    }
+  }, 60);
+}
+
+// ─────────────────────────────────────────────
+// CHART
+// ─────────────────────────────────────────────
+function fitAndDraw() {
+  resizeCanvas();
+}
+
+function redraw() {
+  if (results.length) drawChart();
+}
+
+function drawEmpty() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  document.getElementById('empty-state').style.display = 'flex';
+}
+
+function hexAlpha(hex, alpha) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function niceStep(range, n) {
+  const raw = range / n;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const f   = raw / mag;
+  let s = f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10;
+  return s * mag;
+}
+
+function drawChart() {
+  if (!results.length) return;
+  document.getElementById('empty-state').style.display = 'none';
+
+  const W = canvas.width, H = canvas.height;
+  const showCI   = document.getElementById('tog-ci').checked;
+  const showCens = document.getElementById('tog-cens').checked;
+  const showRisk = document.getElementById('tog-risk').checked;
+
+  const maxT  = Math.max(...results.map(r => r.km.maxT)) * 1.03;
+  const plotW = W - PAD.left - PAD.right;
+  const plotH = H - PAD.top  - PAD.bottom;
+
+  if (plotW < 10 || plotH < 10) return;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Background
+  ctx.fillStyle = '#F4F7FB';
+  ctx.fillRect(0, 0, W, H);
+
+  const sx = t => PAD.left + (t / maxT) * plotW;
+  const sy = S => PAD.top  + (1 - S) * plotH;
+
+  // 50% reference line (sin etiqueta)
+  ctx.setLineDash([6, 4]);
+  ctx.strokeStyle = 'rgba(42,172,168,0.18)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(PAD.left, sy(0.5)); ctx.lineTo(PAD.left + plotW, sy(0.5)); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // ── Draw groups ──
+  results.forEach(({ label, color, km }) => {
+    const steps = km.steps;
+    const last  = steps[steps.length - 1];
+
+    // A) CI Band
+    if (showCI && steps.length > 1) {
+      ctx.beginPath();
+      // Upper boundary left→right
+      ctx.moveTo(sx(steps[0].t), sy(steps[0].upper));
+      for (let i = 1; i < steps.length; i++) {
+        ctx.lineTo(sx(steps[i].t), sy(steps[i - 1].upper));  // horizontal
+        ctx.lineTo(sx(steps[i].t), sy(steps[i].upper));       // vertical
+      }
+      ctx.lineTo(sx(maxT), sy(last.upper));
+      // Lower boundary right→left
+      ctx.lineTo(sx(maxT), sy(last.lower));
+      for (let i = steps.length - 1; i >= 1; i--) {
+        ctx.lineTo(sx(steps[i].t),     sy(steps[i].lower));      // vertical
+        ctx.lineTo(sx(steps[i - 1].t), sy(steps[i].lower));      // horizontal
+      }
+      ctx.lineTo(sx(steps[0].t), sy(steps[0].lower));
+      ctx.closePath();
+      ctx.fillStyle = hexAlpha(color, 0.10);
+      ctx.fill();
+    }
+
+    // B) Stepped line
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(sx(steps[0].t), sy(steps[0].S));
+    for (let i = 1; i < steps.length; i++) {
+      ctx.lineTo(sx(steps[i].t), sy(steps[i - 1].S)); // horizontal
+      ctx.lineTo(sx(steps[i].t), sy(steps[i].S));      // vertical
+    }
+    ctx.lineTo(sx(maxT), sy(last.S));
+    ctx.stroke();
+
+    // C) Censored marks
+    if (showCens) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.8;
+      km.censoredPts.forEach(pt => {
+        const cx = sx(pt.t), cy = sy(pt.S);
+        ctx.beginPath(); ctx.moveTo(cx, cy - 5); ctx.lineTo(cx, cy + 5); ctx.stroke();
+      });
+    }
+  });
+
+  // Axes
+  ctx.strokeStyle = 'rgba(28,20,12,0.25)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(PAD.left, PAD.top);
+  ctx.lineTo(PAD.left, PAD.top + plotH);
+  ctx.lineTo(PAD.left + plotW, PAD.top + plotH);
+  ctx.stroke();
+
+  // Axis ticks and numeric labels
+  ctx.fillStyle = 'rgba(28,20,12,0.7)';
+  ctx.strokeStyle = 'rgba(28,20,12,0.22)';
+  ctx.lineWidth = 1;
+  ctx.font = '500 9px JetBrains Mono, monospace';
+  ctx.textBaseline = 'middle';
+
+  const xTicks = niceStep(maxT, 5);
+  for (let t = 0; t <= maxT + 1e-9; t += xTicks) {
+    const x = sx(t);
+    ctx.beginPath();
+    ctx.moveTo(x, PAD.top + plotH);
+    ctx.lineTo(x, PAD.top + plotH + 5);
+    ctx.stroke();
+    ctx.textAlign = 'center';
+    ctx.fillText(Number.isInteger(t) ? String(t) : t.toFixed(1), x, PAD.top + plotH + 13);
+  }
+
+  for (let p = 0; p <= 1.0001; p += 0.25) {
+    const y = sy(p);
+    ctx.beginPath();
+    ctx.moveTo(PAD.left - 5, y);
+    ctx.lineTo(PAD.left, y);
+    ctx.stroke();
+    ctx.textAlign = 'right';
+    ctx.fillText(Math.round(p * 100) + '%', PAD.left - 10, y);
+  }
+
+  // Axis labels
+  ctx.fillStyle = 'rgba(28,20,12,0.75)';
+  ctx.font = '600 12px Syne, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Tiempo', PAD.left + plotW * 0.5, H - 12);
+
+  ctx.save();
+  ctx.translate(16, PAD.top + plotH * 0.5);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText('Probabilidad', 0, 0);
+  ctx.restore();
+
+
+  // Legend (if >1 group or group != "Total")
+  if (results.length > 1 || results[0].label !== 'Total') {
+    const legX = PAD.left + plotW - 160 - 4;
+    const legY = PAD.top + 6;
+    const legW = 160, legH = 12 + results.length * 18 + 6;
+    ctx.fillStyle = 'rgba(255,255,255,0.88)';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(legX, legY, legW, legH, 5);
+    else ctx.rect(legX, legY, legW, legH);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(28,20,12,0.1)'; ctx.lineWidth = 1;
+    ctx.stroke();
+
+    results.forEach(({ label, color }, i) => {
+      const ly = legY + 10 + i * 18;
+      ctx.strokeStyle = color; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(legX + 8, ly); ctx.lineTo(legX + 26, ly); ctx.stroke();
+      ctx.fillStyle = '#1A1512';
+      ctx.font = '500 10px Inter, sans-serif';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      const lbl = label.length > 18 ? label.slice(0, 16) + '…' : label;
+      ctx.fillText(lbl, legX + 30, ly);
+    });
+  }
+
+  // Crosshair
+  if (mouseX !== null) {
+    ctx.strokeStyle = 'rgba(28,20,12,0.25)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath(); ctx.moveTo(mouseX, PAD.top); ctx.lineTo(mouseX, PAD.top + plotH); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+}
+
+// ─────────────────────────────────────────────
+// MOUSE INTERACTIONS
+// ─────────────────────────────────────────────
+canvas.addEventListener('mousemove', e => {
+  if (!results.length) return;
+  const rect   = canvas.getBoundingClientRect();
+  const cx     = e.clientX - rect.left;
+  const cy     = e.clientY - rect.top;
+
+  const plotW = canvas.width  - PAD.left - PAD.right;
+  const plotH = canvas.height - PAD.top  - PAD.bottom;
+  const maxT  = Math.max(...results.map(r => r.km.maxT)) * 1.03;
+
+  const inPlot = cx >= PAD.left && cx <= PAD.left + plotW && cy >= PAD.top && cy <= PAD.top + plotH;
+
+  const tooltip = document.getElementById('tooltip');
+  if (!inPlot) {
+    tooltip.classList.remove('visible');
+    mouseX = null; mouseY = null;
+    drawChart(); return;
+  }
+
+  mouseX = cx; mouseY = cy;
+  const t = ((cx - PAD.left) / plotW) * maxT;
+
+  let html = `<div class="tt-time">t = ${t.toFixed(1)}</div>`;
+  results.forEach(({ label, color, km }) => {
+    const S  = getSAtTime(km.steps, t);
+    const nR = getNAtRisk(km.steps, t);
+    const lbl = label.length > 14 ? label.slice(0,12)+'…' : label;
+    html += `<div class="tt-row">
+      <span class="tt-dot" style="background:${color}"></span>
+      <span class="tt-name">${lbl}</span>
+      <span class="tt-s">${(S*100).toFixed(1)}%</span>
+      <span class="tt-n">(n=${nR})</span>
+    </div>`;
+  });
+
+  tooltip.innerHTML = html;
+  tooltip.classList.add('visible');
+
+  let tx = e.clientX + 16, ty = e.clientY - 10;
+  const ttW = tooltip.offsetWidth, ttH = tooltip.offsetHeight;
+  if (tx + ttW > window.innerWidth  - 8) tx = e.clientX - ttW - 16;
+  if (ty + ttH > window.innerHeight - 8) ty = e.clientY - ttH + 10;
+  tooltip.style.left = tx + 'px';
+  tooltip.style.top  = ty + 'px';
+
+  drawChart();
+});
+
+canvas.addEventListener('mouseleave', () => {
+  document.getElementById('tooltip').classList.remove('visible');
+  mouseX = null; mouseY = null;
+  if (results.length) drawChart();
+});
+
+// ─────────────────────────────────────────────
+// EXPORT
+// ─────────────────────────────────────────────
+function exportPNG() {
+  if (!results.length) return;
+  const link = document.createElement('a');
+  link.download = 'kaplan-meier.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+resizeCanvas();
+
+</script>
+</body>
+</html>

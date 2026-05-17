@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ICSO Analytics — Portal de Proyectos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:      #1E3A6E;
+  --navy-dark: #152B55;
+  --navy-mid:  #25477F;
+  --teal:      #2AACA8;
+  --teal-light:#3DC4C0;
+  --teal-dark: #1E8A87;
+  --gray:      #4A4A4A;
+  --bg:        #F4F7FB;
+  --bg2:       #EBF0F8;
+  --white:     #FFFFFF;
+  --border:    rgba(30,58,110,0.1);
+  --border2:   rgba(42,172,168,0.3);
+  --text:      #1A2D50;
+  --text2:     #4A5E7A;
+  --text3:     #8A9CB8;
+  --shadow:    0 4px 24px rgba(30,58,110,0.10);
+  --shadow-lg: 0 12px 48px rgba(30,58,110,0.16);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; overflow: hidden; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--teal); border-radius: 3px; }
+
+.screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; transition: opacity 0.35s ease, transform 0.35s ease; }
+.screen.hidden { opacity: 0; pointer-events: none; transform: translateY(10px); }
+
+.bg-deco { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.bg-deco::before { content: ''; position: absolute; top: -200px; right: -200px; width: 700px; height: 700px; background: radial-gradient(circle, rgba(42,172,168,0.12) 0%, transparent 70%); border-radius: 50%; }
+.bg-deco::after { content: ''; position: absolute; bottom: -150px; left: -150px; width: 500px; height: 500px; background: radial-gradient(circle, rgba(30,58,110,0.08) 0%, transparent 70%); border-radius: 50%; }
+
+/* ── SETUP BANNER ── */
+#setup-banner {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  background: linear-gradient(90deg, var(--navy), var(--navy-mid));
+  color: #fff;
+  padding: 10px 24px;
+  font-size: 13px;
+  display: flex; align-items: center; gap: 12px;
+  border-bottom: 2px solid var(--teal);
+}
+#setup-banner.hidden { display: none; }
+.setup-dot { width: 8px; height: 8px; background: #FFC107; border-radius: 50%; flex-shrink: 0; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.setup-link { color: var(--teal-light); font-weight: 700; cursor: pointer; text-decoration: underline; }
+
+/* ── LOADING OVERLAY ── */
+#loading-overlay {
+  position: fixed; inset: 0; z-index: 150;
+  background: var(--bg);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 16px;
+  transition: opacity 0.3s;
+}
+#loading-overlay.hidden { opacity: 0; pointer-events: none; }
+.spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--bg2);
+  border-top-color: var(--teal);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 13px; color: var(--text2); }
+
+/* ── LOGIN ── */
+#screen-login { z-index: 10; flex-direction: column; }
+.login-card { position: relative; z-index: 1; width: 440px; background: var(--white); border: 1px solid var(--border); border-radius: 24px; padding: 52px 48px; box-shadow: var(--shadow-lg); }
+.login-logo-wrap { display: flex; justify-content: center; margin-bottom: 32px; }
+.login-logo-wrap img { height: 64px; object-fit: contain; }
+.login-divider { width: 40px; height: 3px; background: linear-gradient(90deg, var(--navy), var(--teal)); border-radius: 2px; margin: 0 auto 28px; }
+.login-tagline { text-align: center; font-size: 13px; color: var(--text3); margin-bottom: 36px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 500; }
+.field-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: var(--text2); text-transform: uppercase; margin-bottom: 8px; }
+.field-input { width: 100%; background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 16px; font-size: 14px; font-family: 'Inter', sans-serif; color: var(--text); outline: none; transition: border-color 0.2s, box-shadow 0.2s; margin-bottom: 20px; }
+.field-input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(42,172,168,0.12); }
+.field-input::placeholder { color: var(--text3); }
+.btn-primary { width: 100%; background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%); color: #fff; border: none; border-radius: 10px; padding: 14px; font-size: 14px; font-weight: 700; font-family: 'Syne', sans-serif; cursor: pointer; letter-spacing: 0.04em; transition: all 0.2s; margin-top: 4px; position: relative; overflow: hidden; }
+.btn-primary:hover { box-shadow: 0 6px 20px rgba(30,58,110,0.3); transform: translateY(-1px); }
+.btn-primary:active { transform: scale(0.98); }
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.login-error { margin-top: 12px; font-size: 12px; color: #DC2626; text-align: center; min-height: 18px; }
+.admin-link { text-align: center; margin-top: 24px; font-size: 12px; color: var(--text3); }
+.admin-link a { color: var(--teal-dark); text-decoration: none; cursor: pointer; font-weight: 600; }
+.admin-link a:hover { color: var(--navy); }
+
+/* ── HUB ── */
+#screen-hub { z-index: 10; flex-direction: column; align-items: stretch; justify-content: flex-start; overflow-y: auto; }
+.hub-header { position: sticky; top: 0; z-index: 20; background: var(--white); border-bottom: 1px solid var(--border); box-shadow: 0 2px 12px rgba(30,58,110,0.06); display: flex; align-items: center; justify-content: space-between; padding: 0 40px; height: 68px; flex-shrink: 0; }
+.header-logo img { height: 40px; object-fit: contain; }
+.hub-user { display: flex; align-items: center; gap: 14px; }
+.hub-username { font-size: 13px; color: var(--text2); }
+.hub-username strong { color: var(--navy); font-weight: 600; }
+.btn-logout { background: var(--bg); border: 1.5px solid var(--border); color: var(--text2); border-radius: 8px; padding: 8px 16px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.2s; }
+.btn-logout:hover { border-color: var(--teal); color: var(--teal-dark); }
+.hub-body { flex: 1; padding: 60px 80px; max-width: 1120px; margin: 0 auto; width: 100%; }
+.hub-welcome { margin-bottom: 52px; }
+.hub-welcome h1 { font-family: 'Syne', sans-serif; font-size: 40px; font-weight: 800; line-height: 1.15; letter-spacing: -0.8px; color: var(--navy); margin-bottom: 12px; }
+.hub-welcome h1 em { font-style: normal; background: linear-gradient(135deg, var(--teal) 0%, var(--teal-dark) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.hub-welcome p { font-size: 15px; color: var(--text2); line-height: 1.6; }
+.projects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
+.project-card { background: var(--white); border: 1.5px solid var(--border); border-radius: 20px; padding: 32px 28px; cursor: pointer; transition: all 0.3s cubic-bezier(.4,0,.2,1); position: relative; overflow: hidden; }
+.project-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--card-accent), var(--card-accent2)); opacity: 0; transition: opacity 0.3s; }
+.project-card:hover { transform: translateY(-5px); border-color: transparent; box-shadow: 0 16px 48px rgba(30,58,110,0.15); }
+.project-card:hover::before { opacity: 1; }
+.card-tag { display: inline-flex; align-items: center; gap: 6px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--card-accent); margin-bottom: 20px; font-family: 'JetBrains Mono', monospace; }
+.card-icon { font-size: 38px; margin-bottom: 16px; display: block; }
+.card-title { font-family: 'Syne', sans-serif; font-size: 21px; font-weight: 700; margin-bottom: 8px; color: var(--navy); }
+.card-desc { font-size: 13px; color: var(--text2); line-height: 1.65; margin-bottom: 28px; }
+.card-cta { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--card-accent); font-family: 'Syne', sans-serif; }
+.card-arrow { transition: transform 0.2s; }
+.project-card:hover .card-arrow { transform: translateX(4px); }
+
+/* ── VIEWER ── */
+#screen-project { z-index: 10; flex-direction: column; align-items: stretch; justify-content: flex-start; }
+.viewer-topbar { display: flex; align-items: center; gap: 14px; padding: 0 20px; height: 54px; background: var(--white); border-bottom: 1px solid var(--border); flex-shrink: 0; z-index: 20; box-shadow: 0 2px 8px rgba(30,58,110,0.06); }
+.topbar-logo img { height: 30px; object-fit: contain; }
+.divider-v { width: 1px; height: 24px; background: var(--border); }
+.btn-back { display: flex; align-items: center; gap: 7px; background: var(--bg); border: 1.5px solid var(--border); color: var(--text2); border-radius: 8px; padding: 7px 14px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.2s; white-space: nowrap; }
+.btn-back:hover { border-color: var(--teal); color: var(--teal-dark); }
+.viewer-breadcrumb { font-size: 13px; color: var(--text3); }
+.viewer-breadcrumb span { color: var(--navy); font-weight: 600; }
+.project-iframe { flex: 1; border: none; width: 100%; background: var(--bg); }
+
+/* ── ADMIN ── */
+#screen-admin { z-index: 10; flex-direction: column; align-items: stretch; justify-content: flex-start; overflow-y: auto; }
+.admin-header { position: sticky; top: 0; z-index: 20; background: var(--white); border-bottom: 1px solid var(--border); box-shadow: 0 2px 12px rgba(30,58,110,0.06); display: flex; align-items: center; justify-content: space-between; padding: 0 40px; height: 68px; flex-shrink: 0; }
+.admin-title-wrap { display: flex; align-items: center; gap: 14px; }
+.admin-title-wrap img { height: 36px; object-fit: contain; }
+.divider-v-sm { width: 1px; height: 20px; background: var(--border); }
+.admin-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; color: var(--navy); display: flex; align-items: center; gap: 10px; }
+.admin-badge { background: linear-gradient(135deg, var(--teal), var(--teal-dark)); color: #fff; border-radius: 5px; padding: 3px 9px; font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+.admin-body { flex: 1; padding: 48px 60px; max-width: 1000px; margin: 0 auto; width: 100%; }
+.admin-section-title { font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3); margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1.5px solid var(--border); }
+.add-client-form { background: var(--white); border: 1.5px solid var(--border); border-radius: 16px; padding: 28px; margin-bottom: 40px; display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; box-shadow: var(--shadow); }
+.form-field { flex: 1; min-width: 140px; }
+.form-field label { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: var(--text3); text-transform: uppercase; margin-bottom: 7px; }
+.form-field input { width: 100%; background: var(--bg); border: 1.5px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 13px; font-family: 'Inter', sans-serif; color: var(--text); outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+.form-field input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(42,172,168,0.1); }
+.form-field input::placeholder { color: var(--text3); }
+.btn-add { background: linear-gradient(135deg, var(--teal) 0%, var(--teal-dark) 100%); color: #fff; border: none; border-radius: 8px; padding: 11px 22px; font-size: 13px; font-weight: 700; font-family: 'Syne', sans-serif; cursor: pointer; white-space: nowrap; transition: all 0.2s; align-self: flex-end; }
+.btn-add:hover { box-shadow: 0 6px 18px rgba(42,172,168,0.35); transform: translateY(-1px); }
+.btn-add:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.clients-table { background: var(--white); border: 1.5px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 40px; box-shadow: var(--shadow); }
+.ct-head { display: grid; grid-template-columns: 1fr 1fr 1fr 130px; padding: 14px 24px; background: var(--bg2); font-size: 9px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3); border-bottom: 1.5px solid var(--border); font-family: 'JetBrains Mono', monospace; }
+.ct-row { display: grid; grid-template-columns: 1fr 1fr 1fr 130px; padding: 16px 24px; align-items: center; border-bottom: 1px solid var(--border); transition: background 0.15s; }
+.ct-row:last-child { border-bottom: none; }
+.ct-row:hover { background: var(--bg); }
+.ct-name { font-size: 14px; font-weight: 600; color: var(--navy); }
+.ct-pass { font-size: 11px; color: var(--text3); font-family: 'JetBrains Mono', monospace; }
+.ct-projects { display: flex; gap: 6px; flex-wrap: wrap; }
+.proj-pill { background: rgba(30,58,110,0.07); border-radius: 5px; padding: 3px 8px; font-size: 10px; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: var(--navy-mid); }
+.ct-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.btn-edit, .btn-del { background: var(--bg); border: 1.5px solid var(--border); color: var(--text2); border-radius: 7px; padding: 6px 12px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.2s; }
+.btn-edit:hover { border-color: var(--teal); color: var(--teal-dark); }
+.btn-del:hover { border-color: #DC2626; color: #DC2626; }
+
+/* ── MODALS ── */
+.modal-overlay { position: fixed; inset: 0; background: rgba(20,36,72,0.45); backdrop-filter: blur(4px); z-index: 100; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal { background: var(--white); border: 1.5px solid var(--border); border-radius: 20px; padding: 40px; width: 500px; box-shadow: var(--shadow-lg); position: relative; }
+.modal-title { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; color: var(--navy); margin-bottom: 8px; }
+.modal-sub { font-size: 13px; color: var(--text2); margin-bottom: 24px; }
+.modal-sub strong { color: var(--teal-dark); }
+.projects-checklist { display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px; }
+.proj-check-item { display: flex; align-items: flex-start; gap: 14px; background: var(--bg); border: 1.5px solid var(--border); border-radius: 12px; padding: 16px; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+.proj-check-item.active { border-color: var(--item-accent); background: rgba(42,172,168,0.04); }
+.custom-check { width: 20px; height: 20px; border: 2px solid var(--border); border-radius: 5px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; margin-top: 2px; }
+.proj-check-item.active .custom-check { background: var(--item-accent); border-color: var(--item-accent); }
+.check-tick { font-size: 11px; font-weight: 900; opacity: 0; transition: opacity 0.15s; color: #fff; }
+.proj-check-item.active .check-tick { opacity: 1; }
+.proj-check-info { flex: 1; }
+.proj-check-name { font-size: 14px; font-weight: 600; color: var(--navy); margin-bottom: 3px; }
+.proj-check-desc { font-size: 12px; color: var(--text2); }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.btn-cancel { background: var(--bg); border: 1.5px solid var(--border); color: var(--text2); border-radius: 9px; padding: 10px 20px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.2s; }
+.btn-cancel:hover { border-color: var(--text3); color: var(--text); }
+.btn-save { background: linear-gradient(135deg, var(--navy), var(--navy-mid)); color: #fff; border: none; border-radius: 9px; padding: 10px 24px; font-size: 13px; font-weight: 700; font-family: 'Syne', sans-serif; cursor: pointer; transition: all 0.2s; }
+.btn-save:hover { box-shadow: 0 6px 18px rgba(30,58,110,0.3); transform: translateY(-1px); }
+.btn-save:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+/* ── SETUP MODAL ── */
+.setup-modal { width: 580px; }
+.setup-steps { display: flex; flex-direction: column; gap: 16px; margin-bottom: 28px; }
+.setup-step { display: flex; gap: 16px; align-items: flex-start; }
+.step-num { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, var(--navy), var(--navy-mid)); color: #fff; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: 'Syne', sans-serif; margin-top: 2px; }
+.step-content { flex: 1; }
+.step-title { font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+.step-desc { font-size: 12px; color: var(--text2); line-height: 1.6; }
+.step-desc code { background: var(--bg2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--navy); }
+.config-inputs { display: flex; flex-direction: column; gap: 14px; margin-bottom: 28px; }
+.config-inputs .form-field { flex: none; }
+.config-inputs .field-input { margin-bottom: 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+.empty-state { text-align: center; padding: 48px 24px; color: var(--text3); font-size: 14px; line-height: 1.7; }
+
+/* ── TOAST ── */
+.toast { position: fixed; bottom: 28px; right: 28px; z-index: 1000; background: var(--navy); color: #fff; border-radius: 12px; padding: 14px 22px; font-size: 13px; font-weight: 500; box-shadow: 0 8px 32px rgba(30,58,110,0.3); transform: translateY(20px); opacity: 0; transition: all 0.3s; pointer-events: none; }
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.success { background: var(--teal-dark); }
+.toast.error { background: #DC2626; }
+</style>
+</head>
+<body>
+
+<div class="bg-deco"></div>
+
+<!-- Setup banner -->
+<div id="setup-banner" class="hidden">
+  <div class="setup-dot"></div>
+  <span>⚠ Supabase no configurado — los datos se guardan localmente. <a class="setup-link" onclick="openSetup()">Configurar ahora →</a></span>
+</div>
+
+<!-- Loading overlay -->
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Conectando…</div>
+</div>
+
+<!-- ─── LOGIN ─── -->
+<div class="screen hidden" id="screen-login">
+  <div class="login-card">
+    <div class="login-logo-wrap"><img id="logo-login" src="" alt="ICSO Analytics" /></div>
+    <div class="login-divider"></div>
+    <div class="login-tagline">Portal de Proyectos Analíticos</div>
+    <div class="field-label">Usuario</div>
+    <input class="field-input" type="text" id="login-user" placeholder="Introduce tu usuario" autocomplete="username" />
+    <div class="field-label">Contraseña</div>
+    <input class="field-input" type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" />
+    <button class="btn-primary" id="btn-login" onclick="doLogin()">Acceder al portal →</button>
+    <div class="login-error" id="login-error"></div>
+    <div class="admin-link"><a onclick="goAdmin()">⚙ Panel de administración</a></div>
+  </div>
+</div>
+
+<!-- ─── HUB ─── -->
+<div class="screen hidden" id="screen-hub">
+  <div class="hub-header">
+    <div class="header-logo"><img id="logo-hub" src="" alt="ICSO Analytics" /></div>
+    <div class="hub-user">
+      <span class="hub-username">Bienvenido, <strong id="hub-username-display">—</strong></span>
+      <button class="btn-logout" onclick="doLogout()">Cerrar sesión</button>
+    </div>
+  </div>
+  <div class="hub-body">
+    <div class="hub-welcome">
+      <h1>Tus herramientas<br>analíticas, <em>disponibles.</em></h1>
+      <p>Selecciona el módulo que deseas consultar o ejecutar.</p>
+    </div>
+    <div class="projects-grid" id="projects-grid"></div>
+  </div>
+</div>
+
+<!-- ─── VIEWER ─── -->
+<div class="screen hidden" id="screen-project">
+  <div class="viewer-topbar">
+    <div class="topbar-logo"><img id="logo-viewer" src="" alt="ICSO Analytics" /></div>
+    <div class="divider-v"></div>
+    <button class="btn-back" onclick="backToHub()">← Volver al portal</button>
+    <div class="viewer-breadcrumb">Portal → <span id="viewer-project-name">—</span></div>
+  </div>
+  <iframe class="project-iframe" id="project-iframe" src="about:blank"></iframe>
+</div>
+
+<!-- ─── ADMIN ─── -->
+<div class="screen hidden" id="screen-admin">
+  <div class="admin-header">
+    <div class="admin-title-wrap">
+      <img id="logo-admin" src="" alt="ICSO Analytics" />
+      <div class="divider-v-sm"></div>
+      <div class="admin-title">Administración <span class="admin-badge">Admin</span></div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <button class="btn-edit" onclick="openSetup()" style="font-size:12px">⚙ Configurar BD</button>
+      <button class="btn-logout" onclick="doLogout()">Cerrar sesión</button>
+    </div>
+  </div>
+  <div class="admin-body">
+    <div class="admin-section-title">Añadir nuevo cliente</div>
+    <div class="add-client-form">
+      <div class="form-field"><label>Usuario</label><input type="text" id="new-user" placeholder="ej. cliente_acme" /></div>
+      <div class="form-field"><label>Contraseña</label><input type="text" id="new-pass" placeholder="ej. pass123" /></div>
+      <div class="form-field"><label>Nombre visible</label><input type="text" id="new-name" placeholder="ej. ACME Corp" /></div>
+      <button class="btn-add" id="btn-add" onclick="addClient()">+ Añadir cliente</button>
+    </div>
+    <div class="admin-section-title">Clientes y accesos configurados</div>
+    <div class="clients-table">
+      <div class="ct-head"><div>Usuario</div><div>Nombre</div><div>Proyectos visibles</div><div style="text-align:right">Acciones</div></div>
+      <div id="clients-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MODAL: Editar accesos ─── -->
+<div class="modal-overlay" id="modal-edit" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-title">Gestionar accesos</div>
+    <div class="modal-sub">Cliente: <strong id="modal-client-display">—</strong></div>
+    <div class="projects-checklist" id="modal-checklist"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-save" id="btn-save-access" onclick="saveAccess()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MODAL: Admin login ─── -->
+<div class="modal-overlay" id="modal-admin-login" onclick="closeAdminModal(event)">
+  <div class="modal">
+    <div class="modal-title">Acceso Administrador</div>
+    <div class="modal-sub">Introduce la contraseña para gestionar el portal.</div>
+    <div class="field-label">Contraseña</div>
+    <input class="field-input" type="password" id="admin-pass-input" placeholder="••••••••" style="margin-bottom:0" />
+    <div class="login-error" id="admin-error" style="text-align:left;margin-top:8px"></div>
+    <div class="modal-actions" style="margin-top:24px">
+      <button class="btn-cancel" onclick="closeAdminModal()">Cancelar</button>
+      <button class="btn-save" onclick="checkAdminPass()">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MODAL: Configurar Supabase ─── -->
+<div class="modal-overlay" id="modal-setup" onclick="closeSetupModal(event)">
+  <div class="modal setup-modal">
+    <div class="modal-title">Conectar base de datos</div>
+    <div class="modal-sub">Sigue estos pasos para conectar Supabase y que los clientes se guarden en la nube.</div>
+
+    <div class="setup-steps">
+      <div class="setup-step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <div class="step-title">Crea una cuenta gratuita en Supabase</div>
+          <div class="step-desc">Ve a <a href="https://supabase.com" target="_blank" style="color:var(--teal-dark);font-weight:600">supabase.com</a> → "Start your project" → regístrate con GitHub o email. Es completamente gratis.</div>
+        </div>
+      </div>
+      <div class="setup-step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <div class="step-title">Crea un proyecto nuevo</div>
+          <div class="step-desc">Ponle cualquier nombre (ej. "icso-portal"), elige una región cercana (Europe West) y una contraseña de base de datos.</div>
+        </div>
+      </div>
+      <div class="setup-step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <div class="step-title">Crea la tabla de clientes</div>
+          <div class="step-desc">En el menú izquierdo ve a <strong>SQL Editor</strong> y ejecuta este código:<br><br>
+          <code>CREATE TABLE clients (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  "user" text UNIQUE NOT NULL,
+  pass text NOT NULL,
+  name text,
+  projects text[] DEFAULT '{}',
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "anon_all" ON clients FOR ALL TO anon USING (true) WITH CHECK (true);</code>
+          </div>
+        </div>
+      </div>
+      <div class="setup-step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <div class="step-title">Copia tus credenciales aquí</div>
+          <div class="step-desc">En Supabase ve a <strong>Settings → API</strong> y copia la URL del proyecto y la clave <strong>anon/public</strong>.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="config-inputs">
+      <div class="form-field">
+        <div class="field-label">Project URL</div>
+        <input class="field-input" type="text" id="sb-url" placeholder="https://xxxxxxxxxxxx.supabase.co" />
+      </div>
+      <div class="form-field">
+        <div class="field-label">Anon Key</div>
+        <input class="field-input" type="text" id="sb-key" placeholder="sb_publishable_... o eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." />
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeSetupModal()">Cancelar</button>
+      <button class="btn-save" onclick="saveSupabaseConfig()">Guardar y conectar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────
+// LOGO
+// ─────────────────────────────────────────
+const LOGO_B64 = '/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCADNASwDASIAAhEBAxEB/8QAHQABAAICAwEBAAAAAAAAAAAAAAcIBQYBBAkCA//EAE4QAAEDAwEFBQMFDQQHCQAAAAEAAgMEBQYRBwgSITETQVFhgRRxkSI3obKzFRYjMkJSYnJ0dYKxwTM2ksIYJCU1VmPSNENEU5OUosPR/8QAGwEBAAIDAQEAAAAAAAAAAAAAAAMEAQIFBgf/xAA0EQACAgIBAgQDBQcFAAAAAAAAAQIDBBEFIUESMTJRBnGBEzOx4fAUIlKRocHRIyRCYWL/2gAMAwEAAhEDEQA/ALlIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIirFme9Bcsfy672NmJUk7LfWS0zZTVuBeGOLddOHlropaqJ3PUEaTsjD1FnUVTP9Le6f8ABdH/AO9d/wBKnvYlnM20PA4clnt8dA+SeSLsWSF4HAdNdSAt7cW2qPimuhrC6E3pM3hERVyUIij/AGjbYMFwUvgu12bPXtH/AGKkHaS+unJvqQtoQlN6itmJSUVtkgIqlZNvZ3WSR7Mcxekp4/yZK2UyO9/C3QD4lajU7ze1CV/FHPaoR+ayiBH0kq5Hjr320QPKrReNFSi170u0SmkBrKSy1rB1DqdzCfVrlJOF71mP10rKfKLHU2ou5Gop39tGPMjQOA92q1ngXx662Zjk1vuWORYnF8ksWT21txsF0prjSu5ccL9eE+BHUHyKyyqNNPTJ09hEWDzHLMdxC2G45Fdae3wfk9o75Tz4NaObj7kSbekYb15mcRVmzDewttPK+HFccmrQOQqK2Ts2nzDG6nT3kKPrhvR7R6h5NNBZaRp6BtM52nq5yuQ4++XbRDLJrXcu0io3BvN7UI36vqLTKPB1EP6ELZrDvY5JC9rb1jVtrGd7qeR8Lvp4gtnx1yMLKrZb5FDeDbxuzzI3sp66qnsVU7QcFc3SMnykGo+Oil+lqIKqnZUU00c8Mg4mSRuDmuHiCOqqWVTrepLRNGcZeTP1REUZsEX5VM8FLA+oqZo4YWDV75HBrWjxJKjXKttOMWp7oLYyW7TDvi+TGD+sevoFJXVOx6gtlTLz8fDj4r5qP69vMk9FXK5bdcnmefYqC3UrO7ia6Q/HUfyWObtpzgP4jUULh+aaYafzVtcbc/Y4U/i/jovS8T+n+SzyKvFq28X6FwFytNDVM7zEXRu/qFIuJ7XcTvj2QTzvtdS7kGVWgaT5PHL46KKzCur6tF3E+IePyn4Y2afs+n5EhIvljmvYHscHNcNQQdQQvpVTthERAEREAREQBebm2D51sq/e9T9q5eka83NsHzrZV+96n7Vy6nF+uXyKeZ6UaqrzbmfzIUv7dUfWVGVebcz+ZCl/bqj6ytcl9z9SHE9ZM64c5rWlziGtA1JJ5ALlV43xtpclgskeFWed0dwucfHWSMOhip+nD73aH0B8VxqanbNQRfnNQjtmrbw+8JVS1dVi2B1XZU7NY6q5xn5Uh6FsR7h+l1Pd4qsksj5ZHSSvc97jq5zjqSfElfK71htFyv13prRaKSSrral4ZFFGNS4/0HmvR1UwojqJypzlY9s6KK4eyzdhsNtpoq7OJjda4gONHE8tp4/Ikc3n4BTPbMFwu2QNhocVs0DG9A2jYT8SNVUs5KuL1FbJ44kmtvoeaqL0gv2zXAr5C6K5YlaJARpxMpmxvHuc3QhQBte3YfZqWa7bP6iWXgBe62VDtXEf8t/f7j8VtVyNU3qXQxPFnFbXUr5hGX5Bhl6ju2PXGWknaRxNB1ZKPzXt6OCvJsF2rUW02wyyGmNHdqLhFZAASzn0cw+B0PLqPpVPdkeynI9oGSPt0FPJQ0dJJw19VMwgQaHm3Q9X/o/HRXswDDrFg+Ow2OwUjYIGc5Hnm+Z/e957yVByUqmtf8iTFU/PsdPaznFBs+wqryGub2r2aR00GuhmlP4rfd3k+AK8/s8y++5rkM97v1Y+eeQ/IZr8iJvc1g7gFN+/Tf5qjL7NjbXkU9JSGqc3XkZJHEA+gb9JVcVNx9ChX435sjybHKXh7ILljHvdwsa5x8ANVNG67smotod2rLnfXP8AuNbXNa+FhLTUSO1Ibr3NAGp058wrl2LFcasdMymtFhttFGwaARU7QfU6albZGfGmXhS2zFWM5re9HmdJFLH/AGkb2frNIXwvUCqtVrq2GOqttHOw9WyQNcPpC0PLth2zTJGPM+OQUM7uk9AewcD46N+SfUKGPKQfqjokeG+zPPtX/wB2TFqnFdkVrgrnS+11oNZKx7iey49C1oHdo3TUeJKiiHdamt2f2mpgu8VxxxtSJKpkzeCZrG/K4dBycCQBqNOvRWka0NaGtAAA0AHcoc/KjbFRgzfGpcG3I5WIyzIbbjNllut0l4ImcmtH40ju5rR3krLOc1rS5xAaBqSe4KqO2HMpctyaTsZHC20jjHSs15Hxf7z/AC0VXExnfPXZeZR5zlo8bj+JdZvol/f5I6+0PPr1mFY72iV1Pb2u/BUkbvkgeLvzj5rUUW27OcDu2aVrhS6U9DEQJ6p41a3yA73eS9B/p0w9kj5V/ueRyO85y/X0X9EakitfjGy7D7HC3/ZjK+oA+VNVjtCT5A8h8FsjrBYnR9m6zW8s/NNMzT+SoS5SCfSOz1FPwVkSjuyxJ+2t/wCCliK0uV7JMRvUL3U1GLXVEfJlpuTdfNnQj4Kv2e4ZeMOuQpriwPhk17Coj14JB/Q+Ss0Zld3RdGcbk+Ay+OXjmtx91/f2M5sz2nXbFJ46SrfJXWgnR0Ljq6IeLCenu6KzFludDebZBcrdUMnppm8THtP0HwPkqTqStg+ayY9kLLPWSn7mXB4ZoTyilPJrh5HofTwVfNw1NOcF1/E6vw58QTosjjXvcH0Tfb8vwLNoiLhn0sIiIAiIgC83NsHzrZV+96n7Vy9I15ubYPnWyr971P2rl1OL9cvkU8z0o1VXm3M/mQpf26o+sqMq825n8yFL+3VH1la5L7n6kOJ6yZnODWlziAANST3Lzd2uZJLlm0i+X2SRz2T1b2wa/kxNPCwf4QF6D7QKx9vwS/V0f49PbaiRvvEbiF5nKDi4L96RLmS8kFcrc02ewWfEfv1r4GuuN1BFKXN5xU4OnLwLiNfcAqbMHE4N8TovTfELfDacUtNsgAEVLRxQt0GnJrAFLydjjWoruR4kE5NvsZVERcM6IREQH5U9NT0/aezwRRdo8yScDQ3icerjp1Pmv1REBSrfeoJqfavSVzmu7KrtkfA7uJY5wI/l8VA6v1vI7MjtGw1rbeGNvducZaIuOgkBHyoye7i0GnmAqHXW311quE9vuVJNSVcDiyWGVha5hHcQV6HAujOpR7o5mTBxnv3Jh3Xtrdv2d3Cutd+jl+5Fxcx5mjbxOgkaCNS3vaQeenPkFcjGcsxrJaZtRYb5QXBjhrpDMC4e9vUeoXmav0pqiemmbNTTywytOrXxvLXD1CxkYEbpeJPTFWS4LT8j1JReemM7atpmPhjKTKaueJvSKs0nbp4fL1PwKlPEt7C8wOZFlGO0taz8qaieYn+/hdqD9C58+Nuj5dS1HKg/PoW4RaDs32u4PnnDDZ7qIa8jU0VUOzm9AeTv4SVvyoyhKD1JaLCkpLaNJ22Xt9j2eV8sLy2ep0poiOoL+p/wgqqCn/emqHNsdmpR0kqXvP8AC0D/ADKAF3eNgo079z5d8X3uzP8As+0Uv69Tv49a6i93yjtNKNZqqVsbT4a9T6Dmrh4xZKHHrHTWm3xhkMDANdOb3d7j5kquu7nRsqto8cz2g+zU0krfI8m6/wDyVnVU5Oxuah2R3vgzDhHHlkNfvN6+i/MIiLlntAsLmmO0OUY9U2mtYCJG6xSac439zgs0izGTi9o0trhbBwmtp+ZSS7UNRbLnU26qbwz00ropB5g6LrNJa4OaSCDqCFvu36jZR7Ta8saGiojjm0HiWgH6QVoK9VVPxwUvc+I5uP8As2TOr+FtfyZcDZjezkGDWu5SO4pnQ9nMf02/JJ9dNfVbKoq3ZJ3SYJVQuJIhrnhvkC1p/nqpVXmsiChbKK9z7DxV7yMKqyXm0thERQnQCIiALzc2wfOtlX73qftXL0jXm5tg+dbKv3vU/auXU4v1y+RTzPSjVVebcz+ZCl/bqj6yoyrzbmfzIUv7dUfWVrkvufqQ4nrJMzyidcsHvtvZ+PU26eJvvdG4BeZpBB0PVephAIII1B6rzg2xY3Lie0u+2SSMsjiqnPg174nniYfgQq/Fz6yiS5kfJmptPC4O8DqvTTCbnFecPs91hIMdXRQzDQ/nMBIXmUre7mO0amrsfOBXKcMrqEukoC939rCTqWDzadeXgfJT8lU5VqS7EeJNKWn3LIIiLhHRCIiAIunb7pbbhPVQUNdT1MtHL2NSyKQOMT9NeFwHQ813E1oBaTtK2XYdtAgH3eto9ra3SOtgPBOzy4u8eR1C3VxDRq4gDxK5W0ZSg9xejDSa0ypOXbp92gL5cXyOmrGa6tgrWGJ+nhxN1B+AUS5Rsd2kY6Xur8VrpIm9ZaVvbs9+rNdPVeiCK9XyVsfV1K8sWD8uh5azwywSuinifFI3q17SCPQr4XplkeJYxkcDob5YbfXtcOZmgaXejuo9Cqlb0Wxe2YLSU+T4wZGWqefsJ6WR5d2DyCWlpPMtOhGh6K/Rnwtl4WtMrWY0oLa6kC0801PPHPTyviljcHMex2jmkdCCOhV1t1LaxU5vZ5sdv83aXu2xh7ZnHnUw66cR/SadAfHUHxVJlJu65cJ6DbljvYOIFTJJTyD85ro3cviAfRS5lMbKnvzRpRNxmizm9LSufj9orACRFVOjPlxN1/yqvytrtisb79s/uNLCzjnhaKiEd5cznoPeNR6qpSi42fip17Hg/i/Hdef9p2kl/ToSLu71zKTaTTxPdoKqnkhHmdOIfVVoFSSz19RarrS3Kkdwz00rZWHzB1VwcLyOhynH6e7ULxo8aSx684397SqnJ1NSVnY7fwZmwlTLGb/eT2vk/wDH9zNIiLlntgiLXtoGUUWJY5Pc6pzTLoW08WvOWTuHu7z5LaMXJqK8yO66FNbsm9JdWV22817K7abceBwc2nDINfNrRr9JK0RftX1U9dWz1lS8vmnkdJI497idSvzijfLKyKNpc97g1rR1JPQL1NUPBBR9j4jmXvJyJ2/xNv8AmyyW7RTPhwCWdw0FRWvc3zADW/zBUorBYBZfvfw62WkgCSCAdrp+eflO+klZ1eavn47JSXufY+Lx3j4ddUvNJb+fcIiKEvhERAF5ubYPnWyr971P2rl6Rrzc2wfOtlX73qftXLqcX65fIp5npRqqvNuZ/MhS/t1R9ZUZV5tzP5kKX9uqPrK1yX3P1IcT1kzqvu+HszkyOwR5jZqYyXO2R8NVGxurpqfrr5lh1PuJ8FYJcOAcCCAQeRB71xqbXVNTRfnBTjpnlmuxbK6stlwguFvqZaaqp3iSKWN3C5jh0IKs7vB7u88lVU5RgNOHiQmSqtbeRB6l0X/T8PBVeqqeelqH09VDJBNGeF8cjS1zT4EHovR03wujuJy7K5VvTLU7Kd6KkdSw23P6WSOZgDfujTM4mv8AN7BzB826+5TXbNq+ze4wtlpszs2jhrwy1IjcPeHaELznRVrOOqm9roSwypxWn1PRO87X9mlqgdLVZlan8P5EE3bPPuDNSoE2v7zs9wpZrTgNPNRRvBa+5TgCUj/lt/J955+QVZ0SrjqoPb6ieVOS0uhtmzjaBkeDZQL9aax75JHa1cMriWVLddSH+fn1Cvjsq2h2HaJjrLpZ5g2ZgAqqR5/CU7/AjvHgehVDdnGz7J89u7KCwW+SSPiAmqngiGEeLnf0HMq8exfZdZNmlidS0JNVcakA1la8aOkI/JA7mjnoPioOS+y1/wCv15kmL4/oR7vo5u+x4dR4vb6l0VfdZRJKY3aOZAw6+mrtPgVFmzLeYynHoYrfk1O2/wBCwBolc7gqWj9bo71Gvmud7bDs6dn9dlVfQvq7NIGx0s9MC9sETRya8dWnXUnu1PVQKp8bHqlQk+pHbbNWNroX2xTeC2ZX6NokvRtM56xV8Zj0P6w1b9K3y35ditwjElFkloqGnoY6yM/1XmagJHRRy4uD9L0bLMl3R6YXTMMTtcLprjktopmN5kyVjB9GqqlvW7YbTmdPTYri8xqbbTzdvU1XCQ2aQAhrW68y0ak6950VfCSep1RSUcfCqXib2zWzJlNa1oKZdz7HJ7ztgpLkI3GltET6mV/cHFpYwe8l2voVGmG4rfsvvUVox+3TVlTIefCPkxj85zujR5lX02G7NqLZriDbbG9tRcakiWuqQNON+nJo/Rb0Hqe9ZzsiNdbj3ZjHqcpb7I34gEEEag9Qqs7asKkxbI31VLEfuVWuL4HAco3dTGfd3eStOsbktkt2Q2ea13SATU8o9WnucD3ELkYuQ6J77dyHm+JjyWP4PKS6p/rsyli2HB8wvOIXL2u1zaxv07anfzjlHmPHzCy20jZxecRqXzNjfWWsn8HVMbrwjweB0Pn0WkL0KcLodOqZ8pnXk8ffp7hOJZvF9s2J3SJrbjJJaanT5TZmlzNfJw/rotm+/vDeDj++a16ftDVT5FSlxlTe02j0dPxlmQjqcYyfv1RZjKts+LWyF7LW6S7VOnyRG0tjB83H+gKgTNMrvGWXM111n4g3URQs5MiHgB/XqsEgBJ0HMqxRiV09Y+ZyeS53L5FeGx6j7Ly/MKV937CH3e8NyS4REUFE/WAOH9rKOno3r79F1tl+yi5ZDLHcb3HLQ2oHUAjhkn8gO4eZ9FY+20VLbqGGhoYGQU0LQyONg0DQFVzcxRTrg+p2/hv4enZZHKyFqK6pPu/f5fidhERcQ+jhERAEREAUCZRux41f8kuV8nyO7RS19VJUvjYyPhaXuLiBqOnNT2ikrunU9wejSUIz9SK5f6JmK/8AFF5/wR//AIph2U4RRbPcQjxugrKisgjmklEs4AcS86kcuS2xFtZkW2LUntGI1Qi9pBERQkgWm7QNmWF5zGfvgssMlRpo2qi/BzN/iHX3HULckW0ZSi9xejDSa0yr2S7pdM+R0mO5ZJC0/ixVtPx6fxNI/ktVn3Uc4Y/SG+WKRviXyN/yq5aK3HPvXcheNW+xT237puVyPHt2TWenZ39kySQ/SApHwrdewq0SsqL9W1l9mbz7N34GEn9VvM/4lPaLWedfJa8RmOPWux07Pa7dZ7fFb7VQ09FSRDRkMEYY1voF3ERVG9kx8va17S17Q5pGhBGoKjPN9hWzjKpJKieyi3Vb+ZnoHdiSfEt/FPwUnL86iaGnidNUSxwxt6ve4NA9St4WSg9xejWUVLo0Vfvu6TGXudY8wc1vcyspddP4mn+i12fdPzJp/BZFY5B59o3/ACq4FJV0tWwvpamGoaDoXRPDgD4cl+ytLPvXcieNW+xT2k3Tcre4e05PZom9/AyR5H0Bbzie6ni9FK2bIb5XXYg6mKFogjPkervpCsSi1lnXy6eILHrXYw+K4xYMWtwt+P2mlt1OOrYWaFx8XHq4+ZWYRFVbbe2Tpa8giIsA+ZGMkY5kjWvY4aFrhqCFoGU7I8Rvb3zxUz7ZUO5l9KQ1pPm08vhotqybJsfxmCKe/wB3pLbHM7hjM8gbxnv0HeshQVlLcKKKtoaiKpppmh8csTg5rwe8EdVvCydb3F6K2Th0ZUfDdBSX/ZBNw2BXBrz7Bf6aRncJoXNP0arot2D5KX6OulrDfHV5/wAqsWitLkL13OLL4U42T34GvqyCrXsCfxg3TIW8Pe2mh5n1cf6KQ8T2a4njj2z01v8AaapvSeqPaOB8h0HoFuSKKzLusWpSLuLweBivxV1rfu+v4nC5RFXOsEREAREQBERAERfnUTRU8Ek8z2xxRtL3uJ5NaBqSUBBO9vndbY7ZbsYsddPTXGuf28z6d5bIyJp0aARzHE76qwO6vnl5ZllywrKq6smqZtX0/tkjnSRys5Pj1dz5jnp+iVr+BRybXN46ov8AURuktVDL7SGuHIRRnSFvqdDp712t5yy1WFbVLVn1nb2TKuRsxLRoBUR6cQP6zdPf8pDBa5FjMVvVJkeOUF8oHcVPWwNlZ5ajmD5g6j0WTQyEUDbyW1LK8Dye2W+wS0bIKikMsnbQB54uMjrr4BY7NN4erdVx2XBLQLrW8DWyVTo3Pa5+nMRxt5uGveUBYpFUyu2ubdLMz7oXayPhpBzJqLS5kenmeWnxUrbENtdvz6pNmuNIy23oML2Ma/WOcDrwE8wR14T3ICXURRVts2yUOzupitcVqnuF0ni7VjXaxwtaSRqXac+nQfQgJVRVRbtc25XxprLLjj2Up5t9ntT5G6frO11XYxzeKy6yXdtBndhY+PUCQsgdTzxjx4TyPu5e9DGy0yjXebJGxO/6HTlD9sxb9ZbnQ3m00t1ttQ2opKqMSRSN6OaVoO84NdiV/wDIQ/bMQyahuVEnZ9d9Tr/tQ/ZMU8qBtyr5vrv+9D9kxdPK9rWY4VtsZj2QyUcmPSVDXMe2n4X+zycmu4terT18eEoYLCouGua5oc0gtI1BHeFyhkLCZ1kEWKYjcsinpn1MdDD2romODS4agaAn3qFqvazl+QbchhmHzUbbWyq7CSV9OJDws/tX669OTgPTxWB2+ZVtWMuUWV1ll+9TidH7T7AdOx1HPtOnXvQxsmTY5tLo9pNFcaqjtc9AKGRkbhLIH8XECeWnuW/KjmxnI9pdiorizArTJXQzSMNUW0Rn4XAHhGo6ctVYfYRku02+3W5RZ5aJKGmiga6mc6iMHE8u5jU9eSA6+8XsovO0SotVbZa+lhlomPifFUuc1rg4g8QIB58vBb1soxaXDMBtmOz1QqpqVjjJI3XhLnOLiBr3DXRaVvMbQMiwG2WWox6SmY+smlZL20Ifya1pGnh1K3nZXeq7ItnlkvdydG6srKVssxY3haXHXoO5DJsyLVtpWdWLArCbpeZXFzyW09PHzknf4NH8yeQVeqvb9tKyWvfDh+OxRxg8mQ0r6qQDzPT6EBa5FVCPbltZxiqjflmOtfTOPNtTQvpif1XDlr6FWA2WbQLJtBsRuNqL4poSG1VLJ+PC49NfEHuKA29FDu3LbZS4HXCxWmijuN5LA+QSOIjgB6cWnMuPXTlyUbwbSd4K6Re20GOzCmcOJvZ2k8JHlxcygLVIqy4rt12iUuSUWP5PiDaiqqpmwsjEL6WYlx06O1B+AVmRqQNRofBAcoiIAiIgCh7euy847s6daaWXhrry4040PNsI5yH4aN/iUwHkNSqW7XrheNrG2WotmNwOrmUodS0UbXANLI9S9+pOgBOp18NEDJz3UcS+97Zuy6VEYbW3lwqXE9REOUY+Grv4ltO2/EWZns5uVqawOrI2e0UZI5iVnMD1GrfVQvSUG83SUsVLT6xQwsEcbGvpdGtA0AHov19n3of/ADH/APqUqGDu7muXukpLhhFdIRJTE1VGHHnwk6SM9DofUqxqotUQZtss2kW3JMhoHUtbLOakhrmFs7C7SRvyDoNQTy8wrvWe4Ut2tVLc6KQSU1VC2aJw72uGoQIqxvr/AN97J+7j9oVNWwHAbbhuD0M4p4n3avgZPV1OmrtXDUMB7mgHT36lQrvr/wB97J+7j9oVZ7Ev7q2j9hh+oEBkpY2SxujkY17HDRzXDUEeBVLtoNsp8F3kYWWZppqeO4U1TExnIMEhaXNHlzcNPBXTVO947lvGQkfnUX+VAy4Y6LCZBjWO3a5UN4vVvpaie2cbqeScAtj4tNSdeXcOvRZtv4o9yqdvIZNfsp2rxbPbfVvpqGOeGlEQeWtlmk4TxP06gcQAHkhksVU7QMFo5DTzZZZInM5FvtjOXl1US7zt6wDKNnUs1BfrPW3iiljfS9jOx0pBcA9o05kaHXTyXftG7NhUFIxtyuN2rajT5b2SNjaT5AAkD1Wtbati+CYbs5uV+oH3BtZD2bacS1HE1znPA00058iUMG1bm9xnq9mNVRzPc5tFcHsi1/Ja5rXafEn4rZN5z5k797oftmLTtyn+4d4/eX/1tW47znzJX/3Q/bMQyahuVfN9d/3ofsmL73w8R+6uG02UUsPFVWl/DMQOZgedD8HaH1K+Nyr5vbv+9D9kxTfd6ClutrqrbWxiSmqonQysPe1w0KGCOd2fL/vr2Z0kdRMZLha/9UqNepAHyHerdPUFZjbhl7cL2c3G6MeG1krPZ6MeMrwQD6DV3oq97GK6r2W7eKvErnIWUdZMaKQu5BxJ1hk9dR/iXf3nLzVZttUtWA2ZxmFJI2FzWnUGok04if1W6e75SA2Pc1xF8FuuGbVsZ7WsJpqQu68AOr3ergB/CVJ+8D8zOT/sR+s1bTi9npMfx2gslCwNp6KBsLPPQcyfMnU+q1beABOxnJ9Br/qR+sEMkX7kOv3DyXw9ph+q5WLVdNyE/wCxclGv/iYPquVi0CK6b73+4sZ/aZ/qtUqbBvmexf8AYGf1UWb73+4sZ/aZ/qtUp7Bvmexf9gZ/VDBWralPXbTd4Y46ydzaaOtFug7xExh/CO08dQ4/BW1xPHLRi1kgtFlo46amhaGjhHynnvc495PiVUiWpbgm9LNWXT8FTMvEkj3uHIRTa6P9wD9fRXMjeySNskbg5jgC1wOoI8UCPwudBRXOhlobhSxVVNM0skilaHNcD5LA4DgmM4PRy0+P28QOmOs0zjxSSc+QLj3DXkFsy+YZYpomywyMkjcNWuY4EH3EIZKa7VOLEN5SW95BQvqqE3COuawjUSw8tNNeR00008WqyeO7XNnd8jj9kyehgkd/3VU7sXg+HytB8FnMyw/G8woW0mRWqCuYzXs3O1D4yfzXDmFEV/3YsWqS59mvVyt7j0ZKGzMH8j9KGCcGNt1w7CrYKWr7I8cMo4X8B001ae7ke5dtUoyW2Z1sIyyjdSXrtKeoHaRGJx7Goa0jiY+M9DzHx5FXGxm6R3vHbdeImljK2mjqGtPdxNB0+lDJkUREAREQGi7dMkq8Z2cXGptsM01xqW+y0rYmFzg94ILtB4DU+gUZbnWFVFvo7lltzppYaioPslK2Vha4MBBe7Q+J0H8JVhiAeqIDlERARZvN4Y7LdnE09JCZLjanGqpw0aue0DR7B46t5+9oWA3R8iuNRitTit3paqCa2O46V00Tm8ULjzaCR+S76CFOS4AA6AICrG+Zb6+szSyvpKGqqGtt5BMUTnAHtD4BWVxRrmYvaWuaWuFFCCCNCDwBZIgHqAuUAVRd4e23Go3g4aint9XNDrRfhGQuc3lw68wNFbpcaDroEAb+KPcq17ymzPIGZazaFiUE1TJrHJUxQt4pYpY9OGRo7xoBrp00VlUQFW6HeWyunpm0tww+nnrmDhc9r5I+J3mzQ6H1WHzk7VdqWNVl+vdtdarFaojPBStge3t5Og4Wn5Tzz69ANdFbgwwl/GYoy7x4RqvtDBBm5rR1dHg13ZV0s9O51x1DZYy0kdm3nzW37yUE1TsXv0NPDJNK5sPCxjS5x/DM6AKRAAOiIZIO3NaSqpNn91ZV001O51zJAljLSR2TOfNTkuOQ8lGsG3HZ2bzcbZVXn2N9FMYu1ljcY5tOpY5oPLXUc/BARpvk4m+Ga2Z1QNLHtc2lq3M6gjnG/wDmNfculuh41Pe8ouue3YuqJIHujhkk5l88nN79fEA6fxLFbe9pLtp14t+GYZFPU0PtA0cGlpqpjyboDzDRqevv7lZHZdikGF4NbcfiLXSQR8U8g/LldzefieXkAhg2dYrLrNDkWL3Oxzu4Y66mfAXafi8Q0B9DoVlUQyUnxa853sMyqvpZ7N2kdRoyWOZjuynDSeF7Hj3n48wpl2ObVs6zrNY4arFmUtg7F4lnijdpG/TVpL3cj000A7/JThJGyQaSMa8eDhqvprWtGjQAPABDBX3fSoqyssmNto6SoqC2pnLhFGX6fJb10Un7DYpYdkWMxTRvjkbQsDmPaQQefUFbmQD1RDJEe8Jsjbn1JHdrQ6OC/UsfA3j5MqGdQxx7iO4+eihrHNpm1XZdA3H7zZZKikp/kxR18L9WDwZI3q3w6+SuEvmSNkg0kY148HDVAVKvO2PalntO+x43YXUYqR2bzQwvfIQeo4zyaPPl71M+7tguQYRikkGQXSWaapcHtoRJxxUg7wD+ce/Tl/NSbHHHGNI2NYP0RovtAVm2o3bbfiu0S45Bb6aqks8jw2CKBntNN2TeTeJo5td3k8uZ6rHwbzGXRQmGqxKgkqRy4gZWDX9Xn/NWpX5mCEu4jDGT4lo1QwU9ZZNpG3PMKWuvNFJQW2EBhmMBjhgj11IYHc3OPr6BW8tNDT2y10ttpG8NPSwshiHg1oAH0BdkAAaAaBcoZCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAKMcr2FbPMhuL6+W2TUE8juKQ0UvZtefHh0IHoApORAabgOzLDcIcZrHamtqiNDVTu7SXTwDj0Hu0W5IiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiA//2Q==';
+const LOGO_SRC = 'data:image/png;base64,' + LOGO_B64;
+document.querySelectorAll('img[id^="logo-"]').forEach(img => img.src = LOGO_SRC);
+
+// ─────────────────────────────────────────
+// PROYECTOS
+// ─────────────────────────────────────────
+const PROJECTS = [
+  { id:'kaplan', name:'Kaplan-Meier',  tag:'Survival Analysis',       desc:'Análisis de supervivencia para datos de seguros. Curvas K-M, intervalos de confianza y comparativa por grupos.', icon:'📊', file:'index.html',       accent:'#1E3A6E', accent2:'#2AACA8' },
+  { id:'vrp',    name:'VRP Solver',    tag:'Routing · Clarke & Wright',desc:'Optimización de rutas de vehículos. Algoritmo Clarke & Wright con minimización de distancia y asignación de flotas.', icon:'🚚', file:'vrp_solver.html',  accent:'#2AACA8', accent2:'#1E3A6E' },
+  { id:'pfsp',   name:'PFSP Solver',   tag:'Scheduling · NEH + Taillard',desc:'Secuenciación óptima en máquinas (Permutation Flow Shop). Algoritmos NEH y Taillard con benchmarks.', icon:'⚙️', file:'pfsp_solver.html', accent:'#25477F', accent2:'#3DC4C0' },
+];
+
+const ADMIN_PASSWORD = 'admin2024';
+
+// ─────────────────────────────────────────
+// SUPABASE CONFIG (guardada en localStorage)
+// ─────────────────────────────────────────
+let SB_URL = localStorage.getItem('icso_sb_url') || '';
+let SB_KEY = localStorage.getItem('icso_sb_key') || '';
+
+function isSupabaseConfigured() { return SB_URL && SB_KEY; }
+
+async function sbFetch(path, options = {}) {
+  // Supports both legacy (eyJ...) and new (sb_publishable_...) Supabase API keys
+  const isNewKey = SB_KEY.startsWith('sb_publishable_') || SB_KEY.startsWith('sb_secret_');
+  const headers = {
+    'Content-Type': 'application/json',
+    'Prefer': options.prefer || 'return=representation',
+    ...(options.headers || {})
+  };
+  if (isNewKey) {
+    headers['Authorization'] = 'Bearer ' + SB_KEY;
+  } else {
+    headers['apikey'] = SB_KEY;
+    headers['Authorization'] = 'Bearer ' + SB_KEY;
+  }
+  const res = await fetch(SB_URL + '/rest/v1/' + path, { ...options, headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.hint || err.error || 'Error ' + res.status);
+  }
+  const text = await res.text();
+  return text ? JSON.parse(text) : [];
+}
+
+// ─────────────────────────────────────────
+// LOCAL FALLBACK
+// ─────────────────────────────────────────
+let localClients = JSON.parse(localStorage.getItem('icso_clients') || 'null') || [
+  { user:'demo',     pass:'demo123', name:'Demo Client', projects:['kaplan','vrp','pfsp'] },
+  { user:'cliente_a',pass:'pass_a',  name:'Cliente A',   projects:['kaplan'] },
+  { user:'cliente_b',pass:'pass_b',  name:'Cliente B',   projects:['vrp','pfsp'] },
+];
+function saveLocal() { localStorage.setItem('icso_clients', JSON.stringify(localClients)); }
+
+// ─────────────────────────────────────────
+// CRUD OPERATIONS (Supabase or local)
+// ─────────────────────────────────────────
+async function getClients() {
+  if (isSupabaseConfigured()) {
+    return await sbFetch('clients?select=*&order=created_at.asc');
+  }
+  return localClients;
+}
+
+async function createClient(user, pass, name) {
+  if (isSupabaseConfigured()) {
+    const rows = await sbFetch('clients', {
+      method: 'POST',
+      body: JSON.stringify({ user, pass, name, projects: [] }),
+      prefer: 'return=representation'
+    });
+    return rows[0];
+  }
+  const c = { user, pass, name, projects: [] };
+  localClients.push(c); saveLocal(); return c;
+}
+
+async function updateClientProjects(clientUser, projects) {
+  if (isSupabaseConfigured()) {
+    await sbFetch(`clients?user=eq.${encodeURIComponent(clientUser)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ projects }),
+      prefer: 'return=minimal'
+    });
+    return;
+  }
+  const c = localClients.find(x => x.user === clientUser);
+  if (c) { c.projects = projects; saveLocal(); }
+}
+
+async function deleteClientByUser(clientUser) {
+  if (isSupabaseConfigured()) {
+    await sbFetch(`clients?user=eq.${encodeURIComponent(clientUser)}`, {
+      method: 'DELETE', prefer: 'return=minimal'
+    });
+    return;
+  }
+  localClients = localClients.filter(x => x.user !== clientUser); saveLocal();
+}
+
+async function findClient(user, pass) {
+  if (isSupabaseConfigured()) {
+    const rows = await sbFetch(`clients?user=eq.${encodeURIComponent(user)}&pass=eq.${encodeURIComponent(pass)}&select=*`);
+    return rows[0] || null;
+  }
+  return localClients.find(c => c.user === user && c.pass === pass) || null;
+}
+
+// ─────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────
+let currentUser = null;
+let editingClientUser = null;
+let adminClients = [];
+
+// ─────────────────────────────────────────
+// SCREENS
+// ─────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  document.getElementById('screen-' + id).classList.remove('hidden');
+}
+function setLoading(show, text = 'Conectando…') {
+  const el = document.getElementById('loading-overlay');
+  el.querySelector('.loading-text').textContent = text;
+  el.classList.toggle('hidden', !show);
+}
+
+// ─────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────
+async function init() {
+  setLoading(true, 'Iniciando portal…');
+  if (!isSupabaseConfigured()) {
+    document.getElementById('setup-banner').classList.remove('hidden');
+  }
+  setLoading(false);
+  showScreen('login');
+}
+
+// ─────────────────────────────────────────
+// LOGIN
+// ─────────────────────────────────────────
+async function doLogin() {
+  const user = document.getElementById('login-user').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  const err  = document.getElementById('login-error');
+  const btn  = document.getElementById('btn-login');
+  if (!user || !pass) { err.textContent = 'Introduce usuario y contraseña.'; return; }
+  btn.disabled = true; btn.textContent = 'Verificando…';
+  try {
+    const client = await findClient(user, pass);
+    if (!client) { err.textContent = 'Usuario o contraseña incorrectos.'; return; }
+    err.textContent = '';
+    currentUser = client;
+    document.getElementById('hub-username-display').textContent = client.name || client.user;
+    renderHub();
+    showScreen('hub');
+  } catch(e) {
+    err.textContent = 'Error de conexión: ' + e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Acceder al portal →';
+  }
+}
+document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key==='Enter') doLogin(); });
+document.getElementById('login-user').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('login-pass').focus(); });
+
+function doLogout() {
+  currentUser = null;
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-pass').value = '';
+  document.getElementById('login-error').textContent = '';
+  document.getElementById('project-iframe').src = 'about:blank';
+  showScreen('login');
+}
+
+// ─────────────────────────────────────────
+// HUB
+// ─────────────────────────────────────────
+function renderHub() {
+  const grid = document.getElementById('projects-grid');
+  const allowed = currentUser.projects || [];
+  const visible = PROJECTS.filter(p => allowed.includes(p.id));
+  if (!visible.length) {
+    grid.innerHTML = `<div class="empty-state">No tienes proyectos asignados aún.<br>Contacta con tu administrador.</div>`; return;
+  }
+  grid.innerHTML = visible.map(p => `
+    <div class="project-card" style="--card-accent:${p.accent};--card-accent2:${p.accent2}" onclick="openProject('${p.id}')">
+      <div class="card-tag">◉ ${p.tag}</div>
+      <span class="card-icon">${p.icon}</span>
+      <div class="card-title">${p.name}</div>
+      <div class="card-desc">${p.desc}</div>
+      <div class="card-cta">Abrir módulo <span class="card-arrow">→</span></div>
+    </div>`).join('');
+}
+function openProject(id) {
+  const proj = PROJECTS.find(p => p.id === id);
+  if (!proj) return;
+  document.getElementById('viewer-project-name').textContent = proj.name;
+  document.getElementById('project-iframe').src = proj.file;
+  showScreen('project');
+}
+function backToHub() {
+  document.getElementById('project-iframe').src = 'about:blank';
+  showScreen('hub');
+}
+
+// ─────────────────────────────────────────
+// ADMIN
+// ─────────────────────────────────────────
+function goAdmin() {
+  document.getElementById('admin-pass-input').value = '';
+  document.getElementById('admin-error').textContent = '';
+  document.getElementById('modal-admin-login').classList.add('open');
+}
+function checkAdminPass() {
+  if (document.getElementById('admin-pass-input').value === ADMIN_PASSWORD) {
+    document.getElementById('modal-admin-login').classList.remove('open');
+    loadAndRenderAdmin();
+    showScreen('admin');
+  } else {
+    document.getElementById('admin-error').textContent = 'Contraseña incorrecta.';
+  }
+}
+document.getElementById('admin-pass-input').addEventListener('keydown', e => { if (e.key==='Enter') checkAdminPass(); });
+function closeAdminModal(e) {
+  if (!e || e.target===document.getElementById('modal-admin-login'))
+    document.getElementById('modal-admin-login').classList.remove('open');
+}
+
+async function loadAndRenderAdmin() {
+  const list = document.getElementById('clients-list');
+  list.innerHTML = `<div class="empty-state"><div class="spinner" style="margin:0 auto 10px"></div>Cargando clientes…</div>`;
+  try {
+    adminClients = await getClients();
+    renderAdmin();
+  } catch(e) {
+    list.innerHTML = `<div class="empty-state" style="color:#DC2626">Error al cargar: ${e.message}</div>`;
+  }
+}
+
+function renderAdmin() {
+  const list = document.getElementById('clients-list');
+  if (!adminClients.length) {
+    list.innerHTML = `<div class="empty-state">Sin clientes. Añade uno arriba.</div>`; return;
+  }
+  list.innerHTML = adminClients.map((c) => {
+    const pills = (c.projects||[]).map(pid => {
+      const p = PROJECTS.find(x=>x.id===pid);
+      return p ? `<span class="proj-pill">${p.name}</span>` : '';
+    }).join('');
+    return `
+      <div class="ct-row">
+        <div><div class="ct-name">${esc(c.user)}</div><div class="ct-pass">${esc(c.pass)}</div></div>
+        <div class="ct-name">${esc(c.name||'—')}</div>
+        <div class="ct-projects">${pills||'<span style="color:var(--text3);font-size:12px">Sin acceso</span>'}</div>
+        <div class="ct-actions">
+          <button class="btn-edit" onclick="editClient('${esc(c.user)}')">Editar</button>
+          <button class="btn-del" onclick="deleteClient('${esc(c.user)}')">✕</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;'); }
+
+async function addClient() {
+  const user = document.getElementById('new-user').value.trim();
+  const pass = document.getElementById('new-pass').value.trim();
+  const name = document.getElementById('new-name').value.trim();
+  if (!user||!pass) { showToast('Rellena usuario y contraseña','error'); return; }
+  if (adminClients.find(c=>c.user===user)) { showToast('Ese usuario ya existe','error'); return; }
+  const btn = document.getElementById('btn-add');
+  btn.disabled = true; btn.textContent = 'Guardando…';
+  try {
+    await createClient(user, pass, name);
+    adminClients = await getClients();
+    renderAdmin();
+    ['new-user','new-pass','new-name'].forEach(id => document.getElementById(id).value='');
+    showToast('Cliente añadido ✓','success');
+  } catch(e) {
+    showToast('Error: ' + e.message,'error');
+  } finally {
+    btn.disabled = false; btn.textContent = '+ Añadir cliente';
+  }
+}
+
+async function deleteClient(clientUser) {
+  if (!confirm(`¿Eliminar cliente "${clientUser}"?`)) return;
+  try {
+    await deleteClientByUser(clientUser);
+    adminClients = adminClients.filter(c => c.user !== clientUser);
+    renderAdmin();
+    showToast('Cliente eliminado','success');
+  } catch(e) { showToast('Error: ' + e.message,'error'); }
+}
+
+function editClient(clientUser) {
+  editingClientUser = clientUser;
+  const c = adminClients.find(x => x.user === clientUser);
+  document.getElementById('modal-client-display').textContent = c.name || c.user;
+  document.getElementById('modal-checklist').innerHTML = PROJECTS.map(p => {
+    const checked = (c.projects||[]).includes(p.id);
+    return `
+      <label class="proj-check-item ${checked?'active':''}" style="--item-accent:${p.accent}" onclick="toggleCheck(this)">
+        <div class="custom-check"><span class="check-tick">✓</span></div>
+        <div class="proj-check-info">
+          <div class="proj-check-name">${p.icon} ${p.name}</div>
+          <div class="proj-check-desc">${p.tag}</div>
+        </div>
+      </label>`;
+  }).join('');
+  document.getElementById('modal-edit').classList.add('open');
+}
+function toggleCheck(el) { el.classList.toggle('active'); }
+
+async function saveAccess() {
+  const items = document.querySelectorAll('#modal-checklist .proj-check-item');
+  const selected = [];
+  items.forEach((item,idx) => { if (item.classList.contains('active')) selected.push(PROJECTS[idx].id); });
+  const btn = document.getElementById('btn-save-access');
+  btn.disabled = true; btn.textContent = 'Guardando…';
+  try {
+    await updateClientProjects(editingClientUser, selected);
+    const c = adminClients.find(x => x.user === editingClientUser);
+    if (c) c.projects = selected;
+    renderAdmin(); closeModal();
+    showToast('Accesos actualizados ✓','success');
+  } catch(e) {
+    showToast('Error: ' + e.message,'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Guardar cambios';
+  }
+}
+function closeModal(e) {
+  if (e && e.target!==document.getElementById('modal-edit')) return;
+  document.getElementById('modal-edit').classList.remove('open');
+}
+
+// ─────────────────────────────────────────
+// SUPABASE SETUP MODAL
+// ─────────────────────────────────────────
+function openSetup() {
+  document.getElementById('sb-url').value = SB_URL;
+  document.getElementById('sb-key').value = SB_KEY;
+  document.getElementById('modal-setup').classList.add('open');
+}
+async function saveSupabaseConfig() {
+  const url = document.getElementById('sb-url').value.trim().replace(/\/$/, '');
+  const key = document.getElementById('sb-key').value.trim();
+  if (!url || !key) { showToast('Completa URL y clave','error'); return; }
+  // Test connection (supports both legacy eyJ and new sb_publishable keys)
+  try {
+    const isNewKey = key.startsWith('sb_publishable_') || key.startsWith('sb_secret_');
+    const testHeaders = isNewKey
+      ? { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' }
+      : { 'apikey': key, 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' };
+    const res = await fetch(url + '/rest/v1/clients?select=id&limit=1', { headers: testHeaders });
+    if (!res.ok) {
+      const body = await res.json().catch(()=>({}));
+      throw new Error(body.message || body.hint || 'Error ' + res.status + ' — comprueba la URL y la clave');
+    }
+  } catch(e) {
+    showToast('No se pudo conectar: ' + e.message, 'error'); return;
+  }
+  SB_URL = url; SB_KEY = key;
+  localStorage.setItem('icso_sb_url', SB_URL);
+  localStorage.setItem('icso_sb_key', SB_KEY);
+  document.getElementById('setup-banner').classList.add('hidden');
+  document.getElementById('modal-setup').classList.remove('open');
+  showToast('¡Supabase conectado! ✓','success');
+  if (document.getElementById('screen-admin').classList.contains('hidden') === false) {
+    loadAndRenderAdmin();
+  }
+}
+function closeSetupModal(e) {
+  if (!e || e.target===document.getElementById('modal-setup'))
+    document.getElementById('modal-setup').classList.remove('open');
+}
+
+// ─────────────────────────────────────────
+// TOAST
+// ─────────────────────────────────────────
+let tt = null;
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast ${type} show`;
+  clearTimeout(tt); tt = setTimeout(()=>t.classList.remove('show'), 3000);
+}
+
+init();
+</script>
+</body>
+</html>
