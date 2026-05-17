@@ -29,6 +29,7 @@
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; overflow: hidden; }
+body.screen-hub-active, body.screen-admin-active { overflow-y: auto; }
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: var(--bg2); }
 ::-webkit-scrollbar-thumb { background: var(--teal); border-radius: 3px; }
@@ -209,6 +210,84 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .toast.show { transform: translateY(0); opacity: 1; }
 .toast.success { background: var(--teal-dark); }
 .toast.error { background: #DC2626; }
+
+/* ─────────────────────────────
+   RESPONSIVE — MOBILE
+───────────────────────────── */
+@media (max-width: 768px) {
+
+  /* Login */
+  .login-card {
+    width: 100%;
+    margin: 16px;
+    padding: 36px 24px;
+    border-radius: 16px;
+  }
+  .login-logo-wrap img { height: 52px; }
+
+  /* Hub header */
+  .hub-header { padding: 0 16px; height: auto; min-height: 60px; flex-wrap: wrap; gap: 8px; padding-top: 10px; padding-bottom: 10px; }
+  .header-logo img { height: 32px; }
+  .hub-user { gap: 8px; flex-wrap: wrap; }
+  .hub-username { font-size: 12px; }
+  .btn-logout { padding: 6px 10px; font-size: 11px; }
+
+  /* Hub body */
+  .hub-body { padding: 28px 16px; }
+  .hub-welcome { margin-bottom: 28px; }
+  .hub-welcome h1 { font-size: 26px; letter-spacing: -0.4px; }
+  .hub-welcome p { font-size: 13px; }
+  .projects-grid { grid-template-columns: 1fr; gap: 16px; }
+  .project-card { padding: 24px 20px; border-radius: 16px; }
+  .card-icon { font-size: 30px; margin-bottom: 12px; }
+  .card-title { font-size: 18px; }
+
+  /* Viewer */
+  .viewer-topbar { padding: 0 12px; height: 48px; gap: 8px; }
+  .topbar-logo img { height: 24px; }
+  .btn-back { padding: 6px 10px; font-size: 11px; }
+  .viewer-breadcrumb { font-size: 11px; display: none; }
+
+  /* Admin header */
+  .admin-header { padding: 0 16px; height: auto; min-height: 60px; flex-wrap: wrap; gap: 8px; padding-top: 10px; padding-bottom: 10px; }
+  .admin-title-wrap img { height: 28px; }
+  .admin-title { font-size: 14px; }
+
+  /* Admin body */
+  .admin-body { padding: 24px 16px; }
+  .add-client-form { flex-direction: column; gap: 12px; padding: 20px 16px; }
+  .form-field { min-width: unset; width: 100%; }
+  .btn-add { width: 100%; }
+
+  /* Clients table */
+  .ct-head { display: none; }
+  .ct-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 16px;
+    border-radius: 0;
+  }
+  .ct-row > div:nth-child(3)::before { content: 'Proyectos: '; font-size: 10px; color: var(--text3); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-bottom: 4px; }
+  .ct-actions { justify-content: flex-start; }
+
+  /* Modals */
+  .modal { width: calc(100% - 32px); padding: 28px 20px; border-radius: 16px; }
+  .setup-modal { width: calc(100% - 32px); }
+  .modal-title { font-size: 18px; }
+  .modal-actions { flex-direction: column-reverse; }
+  .btn-cancel, .btn-save { width: 100%; text-align: center; padding: 12px; }
+
+  /* Setup banner */
+  #setup-banner { font-size: 11px; padding: 8px 14px; }
+
+  /* Toast */
+  .toast { left: 16px; right: 16px; bottom: 16px; text-align: center; }
+}
+
+@media (max-width: 400px) {
+  .hub-welcome h1 { font-size: 22px; }
+  .login-card { padding: 28px 18px; }
+}
 </style>
 </head>
 <body>
@@ -249,6 +328,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
     <div class="header-logo"><img id="logo-hub" src="" alt="ICSO Analytics" /></div>
     <div class="hub-user">
       <span class="hub-username">Bienvenido, <strong id="hub-username-display">—</strong></span>
+      <button class="btn-logout" onclick="openChangePass()" style="border-color:var(--border);color:var(--text2)">🔑 Cambiar contraseña</button>
       <button class="btn-logout" onclick="doLogout()">Cerrar sesión</button>
     </div>
   </div>
@@ -395,6 +475,29 @@ CREATE POLICY "anon_all" ON clients FOR ALL TO anon USING (true) WITH CHECK (tru
   </div>
 </div>
 
+<!-- ─── MODAL: Cambiar contraseña ─── -->
+<div class="modal-overlay" id="modal-change-pass" onclick="closeChangePassModal(event)">
+  <div class="modal">
+    <div class="modal-title">Cambiar contraseña</div>
+    <div class="modal-sub">Introduce tu contraseña actual y la nueva.</div>
+
+    <div class="field-label">Contraseña actual</div>
+    <input class="field-input" type="password" id="cp-current" placeholder="••••••••" />
+
+    <div class="field-label">Nueva contraseña</div>
+    <input class="field-input" type="password" id="cp-new" placeholder="••••••••" />
+
+    <div class="field-label">Repetir nueva contraseña</div>
+    <input class="field-input" type="password" id="cp-repeat" placeholder="••••••••" style="margin-bottom:0" />
+    <div class="login-error" id="cp-error" style="text-align:left;margin-top:8px;margin-bottom:16px"></div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeChangePassModal()">Cancelar</button>
+      <button class="btn-save" id="btn-cp-save" onclick="doChangePass()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -480,6 +583,19 @@ async function createClient(user, pass, name) {
   localClients.push(c); saveLocal(); return c;
 }
 
+
+async function updateClientPass(clientUser, newPass) {
+  if (isSupabaseConfigured()) {
+    await sbFetch(`clients?user=eq.${encodeURIComponent(clientUser)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ pass: newPass }),
+      prefer: 'return=minimal'
+    });
+    return;
+  }
+  const c = localClients.find(x => x.user === clientUser);
+  if (c) { c.pass = newPass; saveLocal(); }
+}
 async function updateClientProjects(clientUser, projects) {
   if (isSupabaseConfigured()) {
     await sbFetch(`clients?user=eq.${encodeURIComponent(clientUser)}`, {
@@ -524,6 +640,10 @@ let adminClients = [];
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
   document.getElementById('screen-' + id).classList.remove('hidden');
+  // Enable scroll on mobile for hub and admin
+  document.body.className = '';
+  if (id === 'hub') document.body.classList.add('screen-hub-active');
+  if (id === 'admin') document.body.classList.add('screen-admin-active');
 }
 function setLoading(show, text = 'Conectando…') {
   const el = document.getElementById('loading-overlay');
@@ -791,6 +911,47 @@ function showToast(msg, type='success') {
   const t = document.getElementById('toast');
   t.textContent = msg; t.className = `toast ${type} show`;
   clearTimeout(tt); tt = setTimeout(()=>t.classList.remove('show'), 3000);
+}
+
+
+// ─────────────────────────────────────────
+// CHANGE PASSWORD
+// ─────────────────────────────────────────
+function openChangePass() {
+  document.getElementById('cp-current').value = '';
+  document.getElementById('cp-new').value = '';
+  document.getElementById('cp-repeat').value = '';
+  document.getElementById('cp-error').textContent = '';
+  document.getElementById('modal-change-pass').classList.add('open');
+  setTimeout(() => document.getElementById('cp-current').focus(), 100);
+}
+function closeChangePassModal(e) {
+  if (!e || e.target === document.getElementById('modal-change-pass'))
+    document.getElementById('modal-change-pass').classList.remove('open');
+}
+async function doChangePass() {
+  const current = document.getElementById('cp-current').value;
+  const newPass  = document.getElementById('cp-new').value;
+  const repeat   = document.getElementById('cp-repeat').value;
+  const err      = document.getElementById('cp-error');
+  const btn      = document.getElementById('btn-cp-save');
+
+  if (!current || !newPass || !repeat) { err.textContent = 'Rellena todos los campos.'; return; }
+  if (current !== currentUser.pass)    { err.textContent = 'La contraseña actual no es correcta.'; return; }
+  if (newPass.length < 6)              { err.textContent = 'La nueva contraseña debe tener al menos 6 caracteres.'; return; }
+  if (newPass !== repeat)              { err.textContent = 'Las contraseñas nuevas no coinciden.'; return; }
+
+  btn.disabled = true; btn.textContent = 'Guardando…';
+  try {
+    await updateClientPass(currentUser.user, newPass);
+    currentUser.pass = newPass;
+    document.getElementById('modal-change-pass').classList.remove('open');
+    showToast('Contraseña actualizada ✓', 'success');
+  } catch(e) {
+    err.textContent = 'Error: ' + e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Guardar';
+  }
 }
 
 init();
