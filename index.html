@@ -419,8 +419,8 @@ const ADMIN_PASSWORD = 'admin2024';
 // ─────────────────────────────────────────
 // SUPABASE CONFIG (guardada en localStorage)
 // ─────────────────────────────────────────
-let SB_URL = localStorage.getItem('icso_sb_url') || '';
-let SB_KEY = localStorage.getItem('icso_sb_key') || '';
+let SB_URL = localStorage.getItem('icso_sb_url') || 'https://vvhkpksrsyfkcgokqyrm.supabase.co';
+let SB_KEY = localStorage.getItem('icso_sb_key') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ2aGtwa3Nyc3lma2Nnb2txeXJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwMTIxMDAsImV4cCI6MjA5NDU4ODEwMH0.zbXaehZ58V3bnFSpSn8p6HiovIxUQeWrdSOlpAxgMFs';
 
 function isSupabaseConfigured() { return SB_URL && SB_KEY; }
 
