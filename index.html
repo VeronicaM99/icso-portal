@@ -104,6 +104,8 @@ body.screen-hub-active, body.screen-admin-active { overflow-y: auto; }
 .hub-username strong { color: var(--navy); font-weight: 600; }
 .btn-logout { background: var(--bg); border: 1.5px solid var(--border); color: var(--text2); border-radius: 8px; padding: 8px 16px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.2s; }
 .btn-logout:hover { border-color: var(--teal); color: var(--teal-dark); }
+.btn-change-pass { background: var(--bg); border: 1.5px solid var(--border); color: var(--text2); border-radius: 8px; padding: 8px 16px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.2s; white-space: nowrap; }
+.btn-change-pass:hover { border-color: var(--navy); color: var(--navy); }
 .hub-body { flex: 1; padding: 60px 80px; max-width: 1120px; margin: 0 auto; width: 100%; }
 .hub-welcome { margin-bottom: 52px; }
 .hub-welcome h1 { font-family: 'Syne', sans-serif; font-size: 40px; font-weight: 800; line-height: 1.15; letter-spacing: -0.8px; color: var(--navy); margin-bottom: 12px; }
@@ -231,6 +233,7 @@ body.screen-hub-active, body.screen-admin-active { overflow-y: auto; }
   .hub-user { gap: 8px; flex-wrap: wrap; }
   .hub-username { font-size: 12px; }
   .btn-logout { padding: 6px 10px; font-size: 11px; }
+  .btn-change-pass { padding: 6px 10px; font-size: 11px; }
 
   /* Hub body */
   .hub-body { padding: 28px 16px; }
@@ -328,7 +331,7 @@ body.screen-hub-active, body.screen-admin-active { overflow-y: auto; }
     <div class="header-logo"><img id="logo-hub" src="" alt="ICSO Analytics" /></div>
     <div class="hub-user">
       <span class="hub-username">Bienvenido, <strong id="hub-username-display">—</strong></span>
-      <button class="btn-logout" onclick="openChangePass()" style="border-color:var(--border);color:var(--text2)">🔑 Cambiar contraseña</button>
+      <button class="btn-change-pass" onclick="openChangePass()">🔑 Cambiar contraseña</button>
       <button class="btn-logout" onclick="doLogout()">Cerrar sesión</button>
     </div>
   </div>
